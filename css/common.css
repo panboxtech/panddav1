@@ -62,9 +62,13 @@ body > .layout, .layout {
 .menu-item.selected { background:linear-gradient(90deg,var(--accent), rgba(0,0,0,0.03)); color:white; }
 
 /* Sidebar footer: estilização para exibir nome do usuário e papel */
-/* Este footer é clicável e abre um dropdown com opções "Meu perfil" e "Sair". */
+/* user-avatar visível sempre; quando colapsado apenas o avatar aparece */
 .sidebar-footer { padding:12px; display:flex; align-items:center; gap:8px; position:relative; cursor:pointer; }
-.sidebar-footer .user-info { display:flex; flex-direction:column; }
+.user-avatar {
+  width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--accent), rgba(37,99,235,0.6)); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;
+  flex:0 0 36px;
+}
+.sidebar-footer .user-info { display:flex; flex-direction:column; margin-left:6px; }
 .sidebar-footer .user-name { font-weight:600; }
 .sidebar-footer .user-role { font-size:12px; color:var(--muted); }
 
@@ -99,8 +103,7 @@ body > .layout, .layout {
 }
 .sidebar-footer-dropdown .dropdown-item:hover { background:rgba(0,0,0,0.03); }
 
-/* Quando a sidebar estiver colapsada esconder textos do footer, mantendo um pequeno indicador visual */
-/* Nesse estado, mostramos tooltip ao pairar (usamos data-tooltip no elemento para acessibilidade) */
+/* Quando a sidebar estiver colapsada esconder textos do footer, mantendo avatar visível */
 .sidebar.collapsed .sidebar-footer .user-info { display: none; }
 .sidebar.collapsed .sidebar-footer { justify-content:center; }
 
