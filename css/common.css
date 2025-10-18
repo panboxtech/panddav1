@@ -7,6 +7,7 @@
   --danger: #ef4444;
   --sidebar-w: 260px;
   --sidebar-collapsed-w: 72px;
+  --topbar-h: 56px; /* altura fixa da topbar usada para compensação */
 }
 
 [data-theme="dark"] {
@@ -24,17 +25,27 @@ a { color:inherit; text-decoration:none; }
 .icon-btn { background:none; border:0; color:var(--text); cursor:pointer; font-size:18px; padding:8px; border-radius:6px; }
 .icon-btn:focus { outline:2px solid var(--accent); }
 
+/* Topbar: permanece fixa no topo, com z-index alto para ficar sobre o conteúdo */
 .topbar {
   display:flex; align-items:center; justify-content:space-between; gap:12px;
-  padding:10px 12px; position:fixed; left:0; right:0; top:0; z-index:20; background:linear-gradient(0deg, rgba(0,0,0,0.04), transparent);
+  height:var(--topbar-h);
+  padding:10px 12px; position:fixed; left:0; right:0; top:0; z-index:1000; background:linear-gradient(0deg, rgba(0,0,0,0.04), transparent);
 }
 .brand { font-weight:600; font-size:18px; }
-.layout { display:flex; margin-top:56px; min-height:calc(100vh - 56px); }
+.layout { display:flex; min-height:calc(100vh - var(--topbar-h)); }
+
+/* Ajuste global: garantir que conteúdo comece abaixo da topbar em desktop
+   Usamos padding-top em body container para que sidebar e main não sejam sobrepostos.
+   Em mobile mantemos comportamento com topbar ocupando espaço e sidebar overlay.
+*/
+body > .layout, .layout {
+  padding-top: var(--topbar-h); /* garante deslocamento do conteúdo */
+}
 
 /* Sidebar */
 .sidebar {
   width:var(--sidebar-w); min-width:var(--sidebar-w); background:var(--card); border-right:1px solid rgba(0,0,0,0.04);
-  display:flex; flex-direction:column; transition:width .2s ease; z-index:10;
+  display:flex; flex-direction:column; transition:width .2s ease, transform .18s ease; z-index:900; /* z-index menor que topbar para não sobrepor */
 }
 .sidebar.collapsed { width:var(--sidebar-collapsed-w); min-width:var(--sidebar-collapsed-w); }
 
@@ -56,7 +67,7 @@ a { color:inherit; text-decoration:none; }
 .sidebar-footer { padding:12px; }
 
 /* Main content */
-.main { flex:1; padding:20px; transition: margin-left .2s ease; }
+.main { flex:1; padding:20px; transition: margin-left .2s ease; z-index:800; /* garantir z-index menor que topbar */ }
 .view-root { max-width:1200px; margin:0 auto; }
 
 /* Cards & forms */
@@ -68,15 +79,32 @@ a { color:inherit; text-decoration:none; }
 .feedback { color:var(--muted); font-size:13px; padding-top:8px; }
 
 /* Overlay / modal basic */
-.overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.35); z-index:50; }
+.overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.35); z-index:1100; }
 .hidden { display:none; }
 
 /* Responsividade */
 /* Mobile behaviour: sidebar acts as overlay from under the topbar */
 @media (max-width: 900px) {
   .layout { flex-direction:column; }
-  .sidebar { position:fixed; inset:56px auto auto 0; height:calc(100vh - 56px); transform:translateX(-100%); transition:transform .2s ease; width:260px; }
+  .sidebar {
+    position:fixed;
+    left:0;
+    top:var(--topbar-h);
+    inset:var(--topbar-h) 0 0 0; /* top offset por topbar */
+    height:calc(100vh - var(--topbar-h));
+    transform:translateX(-100%);
+    width:260px;
+  }
   .sidebar.expanded { transform:translateX(0); }
   .sidebar.collapsed { transform:translateX(-100%); } /* collapsed não aplica no mobile */
-  .main { margin-top:56px; padding:12px; }
+  .main { margin-top:0; padding:12px; } /* padding-top já aplicado via body > .layout */
+}
+
+/* Desktop: garantir que topbar sempre sobreponha e que conteúdo não ocupe seu espaço ao rolar.
+   A topbar tem z-index maior; sidebar/main têm z-index menores. Além disso, já adicionamos padding-top
+   global para deslocar o conteúdo. Mantemos transições suaves.
+*/
+@media (min-width: 901px) {
+  /* garantir que layout não use margin-top duplicado quando houver padding-top aplicado */
+  .main { padding-top: 12px; } /* mantém espaçamento interno sem sobrepor a topbar */
 }
