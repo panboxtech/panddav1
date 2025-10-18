@@ -1,0 +1,92 @@
+/* login.css
+   Estilos específicos para a página de login.
+   Não modifica os arquivos existentes do protótipo; mantemos estilos locais.
+*/
+
+:root{
+  --bg: #f1f5f9;
+  --card: #fff;
+  --text: #0b1220;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --radius: 12px;
+  --shadow: 0 8px 30px rgba(12,20,40,0.06);
+}
+
+/* Tema escuro apenas para a tela de login (toggle em js altera [data-theme="dark"]) */
+[data-theme="dark"] {
+  --bg: #0b1220;
+  --card: #0f1724;
+  --text: #e6eef8;
+  --muted: #9aa6b2;
+  --accent: #60a5fa;
+  --shadow: 0 8px 30px rgba(2,6,23,0.6);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+.login-root{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+
+/* Card */
+.login-card{
+  width:100%;
+  max-width:420px;
+  background:var(--card);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:28px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  text-align:center;
+}
+
+/* Logo area */
+.logo-wrap{ margin-bottom:4px; display:flex; align-items:center; justify-content:center; }
+.logo-placeholder{
+  width:76px; height:76px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,var(--accent), rgba(37,99,235,0.7));
+  color:white; font-weight:700; font-size:20px;
+}
+
+/* Titles */
+.login-title{ margin:0; font-size:20px; font-weight:700; }
+.login-sub{ margin:0; color:var(--muted); font-size:13px; }
+
+/* Form */
+.login-form{ margin-top:4px; display:flex; flex-direction:column; gap:12px; text-align:left; }
+.field{ display:flex; flex-direction:column; gap:6px; }
+.field-label{ font-size:13px; color:var(--muted); }
+.field input, .field select{
+  padding:10px 12px; border-radius:8px; border:1px solid rgba(0,0,0,0.08);
+  font-size:14px; color:var(--text); background:transparent; outline:none;
+}
+.field input:focus, .field select:focus{ box-shadow:0 0 0 4px rgba(37,99,235,0.06); border-color:var(--accent) }
+
+/* Row */
+.row{ display:flex; align-items:center; gap:12px; }
+.row.between{ justify-content:space-between; }
+
+/* Actions */
+.actions{ display:flex; justify-content:flex-end; }
+.primary{
+  background:var(--accent); color:white; border:0; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600;
+}
+
+/* Feedback */
+.feedback{ color:var(--muted); font-size:13px; min-height:18px; margin-top:6px; }
+
+/* Footer */
+.login-foot{ margin-top:6px; color:var(--muted); font-size:12px; text-align:center; }
+
+/* Responsividade */
+@media (max-width:480px){
+  .login-card{ padding:20px; }
+  .logo-placeholder{ width:64px;height:64px;font-size:18px; }
+}
