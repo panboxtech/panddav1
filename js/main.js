@@ -5,9 +5,9 @@
      - Substituir MockAPI.init por carregamento real dos dados.
 
    Alterações aplicadas:
-     - Atualiza o conteúdo do rodapé da sidebar para mostrar nome do usuário e papel (Master/Comum).
-     - Remove dependência do botão de alternar tema no footer (foi substituído pela topbar).
-     - Mantém comportamento de toggle e ajustes ao redimensionar.
+     - Footer da sidebar agora é clicável e abre um dropdown com "Meu perfil" e "Sair".
+     - Quando a sidebar está colapsada, o texto do footer é ocultado e um tooltip é mostrado no hover/focus.
+     - updateSidebarFooter atualiza tanto o conteúdo visível quanto o atributo aria-label usado pelo tooltip.
 */
 
 const Main = (function(){
@@ -24,11 +24,16 @@ const Main = (function(){
 
     // Eventos de toggle de tema (topbar)
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-    // Removido listener para themeToggleSidebar porque o botão do footer foi removido.
 
     // Sidebar behavior: usamos o mesmo botão da topbar (mobileMenuBtn)
     const sidebar = document.getElementById('sidebar');
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+
+    // Footer elements
+    const sidebarFooter = document.getElementById('sidebarFooter');
+    const dropdown = sidebarFooter.querySelector('.sidebar-footer-dropdown');
+    const myProfileBtn = document.getElementById('myProfileBtn');
+    const signOutBtn = document.getElementById('signOutBtn');
 
     // Função utilitária que detecta mobile
     function isMobileView() {
@@ -44,6 +49,8 @@ const Main = (function(){
       } else {
         sidebar.classList.toggle('collapsed');
       }
+      // Fechar dropdown ao alternar a sidebar para evitar sobreposição/estado inconsistente
+      closeFooterDropdown();
     });
 
     // Clique fora fecha o menu apenas no mobile (comportamento de overlay)
@@ -54,6 +61,10 @@ const Main = (function(){
         if (!sidebarEl.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
           sidebarEl.classList.remove('expanded');
         }
+      }
+      // Se clicou fora do footer dropdown, fechar o dropdown
+      if (!sidebarFooter.contains(e.target)) {
+        closeFooterDropdown();
       }
     });
 
@@ -66,13 +77,64 @@ const Main = (function(){
         // garantir que expanded overlay não persista no desktop
         sidebar.classList.remove('expanded');
       }
+      // fechar dropdown ao redimensionar
+      closeFooterDropdown();
     });
 
     // NOTE: Removemos qualquer referência ao id 'sidebarToggle' (botão interno antigo).
-    // Verifique se não há usos residuais em outros arquivos; neste protótipo não existem.
 
     // Atualiza footer da sidebar com dados do usuário atual (nome e role)
     updateSidebarFooter();
+
+    // Ao clicar no footer: alterna dropdown. Se sidebar estiver colapsada, não abrir dropdown (tooltip será usado)
+    sidebarFooter.addEventListener('click', (e) => {
+      // Se a sidebar estiver colapsada, evitar abrir o dropdown e permitir o tooltip
+      if (sidebar.classList.contains('collapsed')) return;
+      const isOpen = sidebarFooter.classList.contains('open');
+      if (isOpen) closeFooterDropdown();
+      else openFooterDropdown();
+    });
+
+    // Acessibilidade: abrir dropdown ao pressionar Enter/Space no footer
+    sidebarFooter.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (sidebar.classList.contains('collapsed')) return;
+        const isOpen = sidebarFooter.classList.contains('open');
+        if (isOpen) closeFooterDropdown();
+        else openFooterDropdown();
+      } else if (e.key === 'Escape') {
+        closeFooterDropdown();
+      }
+    });
+
+    // Dropdown item handlers
+    myProfileBtn.addEventListener('click', () => {
+      // Abrir modal de perfil (reutiliza Modal). Implementação básica do perfil.
+      Modal.open({
+        title: 'Meu perfil',
+        contentBuilder(container, data, h) {
+          const user = Auth.getUser() || {};
+          const email = h.createInput({ label: 'Email', name: 'email', value: user.email || '', required: true });
+          const role = h.createInput({ label: 'Papel', name: 'role', value: user.role || '', attrs: { readonly: true } });
+          container.appendChild(email.wrap);
+          container.appendChild(role.wrap);
+          container._collectData = () => ({ email: email.input.value, role: role.input.value });
+        },
+        onSave: async () => {
+          // No protótipo não alteramos realmente o usuário; apenas fecha o modal com feedback.
+          return Promise.resolve();
+        }
+      });
+      closeFooterDropdown();
+    });
+
+    signOutBtn.addEventListener('click', () => {
+      // Desconectar: reutiliza lógica de Auth (no protótipo usamos localStorage)
+      localStorage.removeItem('pandda_user');
+      Auth.showLogin();
+      closeFooterDropdown();
+    });
 
     // Menu navigation
     document.getElementById('menuList').addEventListener('click', (e)=> {
@@ -86,6 +148,8 @@ const Main = (function(){
       if (window.matchMedia('(max-width:900px)').matches) {
         sidebar.classList.remove('expanded');
       }
+      // fechar o dropdown se estiver aberto
+      closeFooterDropdown();
     });
 
     // Expose onAuthChanged for Auth
@@ -93,6 +157,18 @@ const Main = (function(){
 
     // Initial route/dashboard
     navigateTo('dashboard');
+
+    // Helpers para o dropdown
+    function openFooterDropdown() {
+      sidebarFooter.classList.add('open');
+      sidebarFooter.setAttribute('aria-expanded','true');
+      dropdown.setAttribute('aria-hidden','false');
+    }
+    function closeFooterDropdown() {
+      sidebarFooter.classList.remove('open');
+      sidebarFooter.setAttribute('aria-expanded','false');
+      dropdown.setAttribute('aria-hidden','true');
+    }
   }
 
   async function onAuthChanged(user) {
@@ -122,9 +198,13 @@ const Main = (function(){
       const displayName = user.email || user.id || 'Admin';
       userNameEl.textContent = displayName;
       userRoleEl.textContent = user.role ? (user.role === 'master' ? 'Master' : 'Comum') : 'Comum';
+      // Quando a sidebar estiver colapsada, usamos aria-label para o tooltip com "Nome • Papel"
+      const tooltipText = `${displayName} • ${userRoleEl.textContent}`;
+      footer.setAttribute('aria-label', tooltipText);
     } else {
       userNameEl.textContent = 'Anônimo';
       userRoleEl.textContent = '-';
+      footer.setAttribute('aria-label', 'Anônimo');
     }
   }
 
