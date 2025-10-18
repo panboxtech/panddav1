@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pandda - protótipo dashboard</title>
+  <link rel="stylesheet" href="css/common.css" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/clients.css" />
+</head>
+<body>
+  <!-- Topbar (mobile) -->
+  <header class="topbar">
+    <button id="mobileMenuBtn" class="icon-btn" aria-label="Abrir menu">☰</button>
+    <div class="brand">Pandda</div>
+    <div class="top-actions">
+      <button id="themeToggle" class="icon-btn" aria-label="Alternar tema">🌓</button>
+      <button id="logoutBtn" class="icon-btn" aria-label="Sair">⎋</button>
+    </div>
+  </header>
+
+  <!-- Layout: sidebar + main -->
+  <div class="layout">
+    <nav id="sidebar" class="sidebar expanded" aria-label="Menu lateral">
+      <div class="sidebar-header">
+        <div class="logo">Pandda</div>
+        <button id="sidebarToggle" class="icon-btn" aria-label="Minimizar menu">⇦</button>
+      </div>
+      <ul id="menuList" class="menu-list" role="menu">
+        <li data-view="dashboard" class="menu-item selected" role="menuitem">
+          <span class="icon">🏠</span><span class="label">Dashboard</span>
+        </li>
+        <li data-view="clients" class="menu-item" role="menuitem">
+          <span class="icon">👥</span><span class="label">Clientes</span>
+        </li>
+        <li data-view="servers" class="menu-item" role="menuitem">
+          <span class="icon">🖥️</span><span class="label">Servidores</span>
+        </li>
+        <li data-view="apps" class="menu-item" role="menuitem">
+          <span class="icon">📱</span><span class="label">Apps</span>
+        </li>
+        <li data-view="plans" class="menu-item" role="menuitem">
+          <span class="icon">💳</span><span class="label">Planos</span>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <button id="themeToggleSidebar" class="flat-btn">Alternar tema</button>
+      </div>
+    </nav>
+
+    <main id="mainContent" class="main">
+      <!-- Views are mounted here by JS -->
+      <section id="view-root" class="view-root" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <!-- Global modals container (modal.js injecta elementos de forma segura) -->
+  <div id="modals-root" aria-hidden="true"></div>
+
+  <!-- Login overlay -->
+  <div id="loginOverlay" class="overlay hidden" aria-hidden="true">
+    <div class="card login-card" role="dialog" aria-label="Login">
+      <h2>Entrar</h2>
+      <form id="loginForm" class="stack">
+        <label>
+          Email
+          <input id="loginEmail" type="email" required />
+        </label>
+        <label>
+          Senha
+          <input id="loginPassword" type="password" required />
+        </label>
+        <label>
+          Nivel
+          <select id="loginRole">
+            <option value="master">Master</option>
+            <option value="comum">Comum</option>
+          </select>
+        </label>
+        <div class="actions">
+          <button type="submit" class="primary">Entrar</button>
+        </div>
+      </form>
+      <div id="loginFeedback" class="feedback" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script src="js/mockData.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/modal.js"></script>
+
+  <script src="js/views/clients.js"></script>
+  <script src="js/views/servers.js"></script>
+  <script src="js/views/plans.js"></script>
+  <script src="js/views/apps.js"></script>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
