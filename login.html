@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pandda - Login</title>
+  <link rel="stylesheet" href="css/login.css" />
+  <!-- Mantive separação de estilos; não alterei css/common.css do protótipo -->
+</head>
+<body>
+  <main class="login-root">
+    <section class="login-card card">
+      <div class="logo-wrap" aria-hidden="false">
+        <!-- Espaço para logo; substituir conteúdo por <img src="..." alt="Pandda" /> -->
+        <div class="logo-placeholder">Pandda</div>
+      </div>
+
+      <h1 class="login-title">Entrar no Pandda</h1>
+      <p class="login-sub">Acesse o painel administrativo</p>
+
+      <form id="loginPageForm" class="login-form" novalidate>
+        <label class="field">
+          <span class="field-label">Email</span>
+          <input id="lp_email" name="email" type="email" autocomplete="username" required />
+        </label>
+
+        <label class="field">
+          <span class="field-label">Senha</span>
+          <input id="lp_password" name="password" type="password" autocomplete="current-password" required />
+        </label>
+
+        <label class="field">
+          <span class="field-label">Nível de acesso</span>
+          <select id="lp_role" name="role" required>
+            <option value="">-- selecionar nível --</option>
+            <option value="master">Master</option>
+            <option value="comum">Comum</option>
+          </select>
+        </label>
+
+        <div class="row between">
+          <div class="remember">
+            <input id="lp_remember" type="checkbox" />
+            <label for="lp_remember">Lembrar</label>
+          </div>
+
+          <div class="theme-switch">
+            <label for="lp_theme">Tema escuro</label>
+            <input id="lp_theme" type="checkbox" aria-label="Alternar tema" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="lp_submit" type="submit" class="primary">Entrar</button>
+        </div>
+
+        <div id="lp_feedback" class="feedback" aria-live="polite"></div>
+      </form>
+
+      <footer class="login-foot">
+        <small>Use credenciais mock para teste: admin@pandda.com / master, user@pandda.com / comum</small>
+      </footer>
+    </section>
+  </main>
+
+  <script src="js/login-page.js"></script>
+</body>
+</html>
