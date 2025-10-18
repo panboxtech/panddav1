@@ -5,10 +5,9 @@
      - Substituir MockAPI.init por carregamento real dos dados.
 
    Alterações aplicadas:
-     - Garantia de que topbar permanece sobre o conteúdo (z-index no CSS).
-     - Aplicado padding-top global (CSS) para deslocar sidebar e main abaixo da topbar.
-     - Mantidos comportamentos de toggle do menu: mobile overlay (expanded) e desktop collapse (collapsed).
-     - Ao redimensionar, limpezas de classes para evitar estados conflitantes.
+     - Atualiza o conteúdo do rodapé da sidebar para mostrar nome do usuário e papel (Master/Comum).
+     - Remove dependência do botão de alternar tema no footer (foi substituído pela topbar).
+     - Mantém comportamento de toggle e ajustes ao redimensionar.
 */
 
 const Main = (function(){
@@ -23,9 +22,9 @@ const Main = (function(){
     const savedTheme = localStorage.getItem('pandda_theme') || 'light';
     setTheme(savedTheme);
 
-    // Eventos de toggle de tema
+    // Eventos de toggle de tema (topbar)
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-    document.getElementById('themeToggleSidebar').addEventListener('click', toggleTheme);
+    // Removido listener para themeToggleSidebar porque o botão do footer foi removido.
 
     // Sidebar behavior: usamos o mesmo botão da topbar (mobileMenuBtn)
     const sidebar = document.getElementById('sidebar');
@@ -72,6 +71,9 @@ const Main = (function(){
     // NOTE: Removemos qualquer referência ao id 'sidebarToggle' (botão interno antigo).
     // Verifique se não há usos residuais em outros arquivos; neste protótipo não existem.
 
+    // Atualiza footer da sidebar com dados do usuário atual (nome e role)
+    updateSidebarFooter();
+
     // Menu navigation
     document.getElementById('menuList').addEventListener('click', (e)=> {
       const li = e.target.closest('.menu-item');
@@ -99,11 +101,30 @@ const Main = (function(){
     if (user) {
       // esconder botão login e apresentar app
       document.getElementById('loginOverlay').classList.add('hidden');
+      updateSidebarFooter();
       // Re-render current view to aplicar permissões
       const sel = document.querySelector('.menu-item.selected');
       if (sel) navigateTo(sel.dataset.view);
     } else {
-      // mostrar login overlay (Auth.showLogin já faz isso)
+      updateSidebarFooter(); // mostra estado anônimo quando não logado
+    }
+  }
+
+  function updateSidebarFooter() {
+    const footer = document.getElementById('sidebarFooter');
+    if (!footer) return;
+    const userInfo = footer.querySelector('.user-info');
+    const userNameEl = footer.querySelector('.user-name');
+    const userRoleEl = footer.querySelector('.user-role');
+    const user = Auth.getUser();
+    if (user) {
+      // Exibir email ou nome curto; mantenho "Admin" se não houver nome
+      const displayName = user.email || user.id || 'Admin';
+      userNameEl.textContent = displayName;
+      userRoleEl.textContent = user.role ? (user.role === 'master' ? 'Master' : 'Comum') : 'Comum';
+    } else {
+      userNameEl.textContent = 'Anônimo';
+      userRoleEl.textContent = '-';
     }
   }
 
