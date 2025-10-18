@@ -23,7 +23,6 @@
   <div class="layout">
     <nav id="sidebar" class="sidebar expanded" aria-label="Menu lateral">
       <div class="sidebar-header">
-        <!-- botão de colapso interno removido conforme pedido; mantive comentário original de propósito -->
         <div class="logo">Pandda</div>
       </div>
       <ul id="menuList" class="menu-list" role="menu">
@@ -45,14 +44,12 @@
       </ul>
 
       <div class="sidebar-footer" id="sidebarFooter" tabindex="0" aria-haspopup="true" aria-expanded="false">
-        <!-- user-avatar sempre visível; quando sidebar estiver expandida, o texto aparece ao lado -->
         <div class="user-avatar" aria-hidden="true">AD</div>
         <div class="user-info">
           <div class="user-name">Admin</div>
           <div class="user-role small-badge">Master</div>
         </div>
 
-        <!-- Dropdown: escondido por padrão, será exibido ao clicar no footer -->
         <div class="sidebar-footer-dropdown" role="menu" aria-hidden="true">
           <button class="dropdown-item" id="myProfileBtn" role="menuitem">Meu perfil</button>
           <button class="dropdown-item" id="signOutBtn" role="menuitem">Sair</button>
@@ -68,34 +65,6 @@
 
   <!-- Global modals container (modal.js injecta elementos de forma segura) -->
   <div id="modals-root" aria-hidden="true"></div>
-
-  <!-- Login overlay -->
-  <div id="loginOverlay" class="overlay hidden" aria-hidden="true">
-    <div class="card login-card" role="dialog" aria-label="Login">
-      <h2>Entrar</h2>
-      <form id="loginForm" class="stack">
-        <label>
-          Email
-          <input id="loginEmail" type="email" required />
-        </label>
-        <label>
-          Senha
-          <input id="loginPassword" type="password" required />
-        </label>
-        <label>
-          Nivel
-          <select id="loginRole">
-            <option value="master">Master</option>
-            <option value="comum">Comum</option>
-          </select>
-        </label>
-        <div class="actions">
-          <button type="submit" class="primary">Entrar</button>
-        </div>
-      </form>
-      <div id="loginFeedback" class="feedback" aria-live="polite"></div>
-    </div>
-  </div>
 
   <script src="js/mockData.js"></script>
   <script src="js/auth.js"></script>
