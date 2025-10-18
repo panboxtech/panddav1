@@ -5,9 +5,9 @@
      - Substituir MockAPI.init por carregamento real dos dados.
 
    Alterações aplicadas:
-     - Footer da sidebar agora é clicável e abre um dropdown com "Meu perfil" e "Sair".
-     - Quando a sidebar está colapsada, o texto do footer é ocultado e um tooltip é mostrado no hover/focus.
-     - updateSidebarFooter atualiza tanto o conteúdo visível quanto o atributo aria-label usado pelo tooltip.
+     - Footer da sidebar agora apresenta user-avatar visível no estado colapsado.
+     - updateSidebarFooter define as iniciais no avatar e o aria-label usado no tooltip.
+     - Mantive comentários importantes e lógica de dropdown / perfil / sair.
 */
 
 const Main = (function(){
@@ -31,6 +31,7 @@ const Main = (function(){
 
     // Footer elements
     const sidebarFooter = document.getElementById('sidebarFooter');
+    const avatarEl = sidebarFooter.querySelector('.user-avatar');
     const dropdown = sidebarFooter.querySelector('.sidebar-footer-dropdown');
     const myProfileBtn = document.getElementById('myProfileBtn');
     const signOutBtn = document.getElementById('signOutBtn');
@@ -81,9 +82,7 @@ const Main = (function(){
       closeFooterDropdown();
     });
 
-    // NOTE: Removemos qualquer referência ao id 'sidebarToggle' (botão interno antigo).
-
-    // Atualiza footer da sidebar com dados do usuário atual (nome e role)
+    // Atualiza footer da sidebar com dados do usuário atual (nome, role e avatar iniciais)
     updateSidebarFooter();
 
     // Ao clicar no footer: alterna dropdown. Se sidebar estiver colapsada, não abrir dropdown (tooltip será usado)
@@ -110,7 +109,6 @@ const Main = (function(){
 
     // Dropdown item handlers
     myProfileBtn.addEventListener('click', () => {
-      // Abrir modal de perfil (reutiliza Modal). Implementação básica do perfil.
       Modal.open({
         title: 'Meu perfil',
         contentBuilder(container, data, h) {
@@ -130,7 +128,6 @@ const Main = (function(){
     });
 
     signOutBtn.addEventListener('click', () => {
-      // Desconectar: reutiliza lógica de Auth (no protótipo usamos localStorage)
       localStorage.removeItem('pandda_user');
       Auth.showLogin();
       closeFooterDropdown();
@@ -189,23 +186,35 @@ const Main = (function(){
   function updateSidebarFooter() {
     const footer = document.getElementById('sidebarFooter');
     if (!footer) return;
-    const userInfo = footer.querySelector('.user-info');
+    const avatarEl = footer.querySelector('.user-avatar');
     const userNameEl = footer.querySelector('.user-name');
     const userRoleEl = footer.querySelector('.user-role');
     const user = Auth.getUser();
     if (user) {
-      // Exibir email ou nome curto; mantenho "Admin" se não houver nome
       const displayName = user.email || user.id || 'Admin';
       userNameEl.textContent = displayName;
       userRoleEl.textContent = user.role ? (user.role === 'master' ? 'Master' : 'Comum') : 'Comum';
-      // Quando a sidebar estiver colapsada, usamos aria-label para o tooltip com "Nome • Papel"
+      // Avatar: usar iniciais do nome/email
+      const initials = getInitials(displayName);
+      if (avatarEl) avatarEl.textContent = initials;
+      // Tooltip texto (quando sidebar colapsada)
       const tooltipText = `${displayName} • ${userRoleEl.textContent}`;
       footer.setAttribute('aria-label', tooltipText);
     } else {
       userNameEl.textContent = 'Anônimo';
       userRoleEl.textContent = '-';
+      if (avatarEl) avatarEl.textContent = 'AN';
       footer.setAttribute('aria-label', 'Anônimo');
     }
+  }
+
+  function getInitials(text) {
+    if (!text) return 'U';
+    // Se for email, pegar antes do @
+    const beforeAt = text.split('@')[0];
+    const parts = beforeAt.split(/[.\s-_]+/).filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0,2).toUpperCase();
+    return (parts[0][0] + (parts[1][0] || '')).toUpperCase();
   }
 
   function setTheme(t) {
