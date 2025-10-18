@@ -5,9 +5,10 @@
      - Substituir MockAPI.init por carregamento real dos dados.
 
    Alterações aplicadas:
-     - Removido o botão interno de colapso (#sidebarToggle) e suas referências.
-     - Reutilizado o botão da topbar (#mobileMenuBtn) para abrir/fechar o menu no mobile e para colapsar/expandir a sidebar no desktop.
-     - Garantido comportamento consistente ao redimensionar a janela para evitar estados conflitantes.
+     - Garantia de que topbar permanece sobre o conteúdo (z-index no CSS).
+     - Aplicado padding-top global (CSS) para deslocar sidebar e main abaixo da topbar.
+     - Mantidos comportamentos de toggle do menu: mobile overlay (expanded) e desktop collapse (collapsed).
+     - Ao redimensionar, limpezas de classes para evitar estados conflitantes.
 */
 
 const Main = (function(){
