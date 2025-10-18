@@ -3,6 +3,11 @@
    Observações para Supabase:
      - Inicializar supabase no topo deste arquivo se for usar recursos globais.
      - Substituir MockAPI.init por carregamento real dos dados.
+
+   Alterações aplicadas:
+     - Removido o botão interno de colapso (#sidebarToggle) e suas referências.
+     - Reutilizado o botão da topbar (#mobileMenuBtn) para abrir/fechar o menu no mobile e para colapsar/expandir a sidebar no desktop.
+     - Garantido comportamento consistente ao redimensionar a janela para evitar estados conflitantes.
 */
 
 const Main = (function(){
@@ -21,29 +26,50 @@ const Main = (function(){
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
     document.getElementById('themeToggleSidebar').addEventListener('click', toggleTheme);
 
-    // Sidebar toggle (desktop collapse)
+    // Sidebar behavior: usamos o mesmo botão da topbar (mobileMenuBtn)
     const sidebar = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    sidebarToggle.addEventListener('click', ()=> {
-      sidebar.classList.toggle('collapsed');
-    });
-
-    // Mobile menu button
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-    mobileMenuBtn.addEventListener('click', ()=> {
-      sidebar.classList.toggle('expanded');
+
+    // Função utilitária que detecta mobile
+    function isMobileView() {
+      return window.matchMedia('(max-width:900px)').matches;
+    }
+
+    // Clique no botão da topbar:
+    // - mobile: alterna sidebar.expanded (overlay)
+    // - desktop: alterna sidebar.collapsed (minimizado mostrando só ícones)
+    mobileMenuBtn.addEventListener('click', () => {
+      if (isMobileView()) {
+        sidebar.classList.toggle('expanded');
+      } else {
+        sidebar.classList.toggle('collapsed');
+      }
     });
 
-    // Close sidebar on click outside (mobile overlay behavior)
-    document.addEventListener('click', (e)=> {
-      const sidebarEl = document.getElementById('sidebar');
-      const isMobile = window.matchMedia('(max-width:900px)').matches;
+    // Clique fora fecha o menu apenas no mobile (comportamento de overlay)
+    document.addEventListener('click', (e) => {
+      const isMobile = isMobileView();
       if (isMobile) {
-        if (!sidebarEl.contains(e.target) && !document.getElementById('mobileMenuBtn').contains(e.target)) {
+        const sidebarEl = document.getElementById('sidebar');
+        if (!sidebarEl.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
           sidebarEl.classList.remove('expanded');
         }
       }
     });
+
+    // Ao redimensionar a janela, ajustar classes para evitar estados conflitantes
+    window.addEventListener('resize', () => {
+      if (isMobileView()) {
+        // garantir que collapsed não impeça a abertura mobile
+        sidebar.classList.remove('collapsed');
+      } else {
+        // garantir que expanded overlay não persista no desktop
+        sidebar.classList.remove('expanded');
+      }
+    });
+
+    // NOTE: Removemos qualquer referência ao id 'sidebarToggle' (botão interno antigo).
+    // Verifique se não há usos residuais em outros arquivos; neste protótipo não existem.
 
     // Menu navigation
     document.getElementById('menuList').addEventListener('click', (e)=> {
