@@ -44,11 +44,18 @@
         </li>
       </ul>
 
-      <div class="sidebar-footer" id="sidebarFooter">
+      <div class="sidebar-footer" id="sidebarFooter" tabindex="0" aria-haspopup="true" aria-expanded="false">
         <!-- substituímos o botão redundante de alternar tema pelo espaço que mostrará usuário e papel -->
+        <!-- Este container também funciona como gatilho do dropdown; quando colapsado, o texto será oculto pelo CSS e um tooltip será mostrado -->
         <div class="user-info">
           <div class="user-name">Admin</div>
           <div class="user-role small-badge">Master</div>
+        </div>
+
+        <!-- Dropdown: escondido por padrão, será exibido ao clicar no footer -->
+        <div class="sidebar-footer-dropdown" role="menu" aria-hidden="true">
+          <button class="dropdown-item" id="myProfileBtn" role="menuitem">Meu perfil</button>
+          <button class="dropdown-item" id="signOutBtn" role="menuitem">Sair</button>
         </div>
       </div>
     </nav>
