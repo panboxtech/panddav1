@@ -1,0 +1,10 @@
+/* Estilos específicos para a view clientes */
+.clients-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; }
+.filter-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.table { width:100%; border-collapse:collapse; margin-top:12px; }
+.table th, .table td { text-align:left; padding:10px; border-bottom:1px solid rgba(0,0,0,0.04); }
+.client-card { display:flex; justify-content:space-between; padding:10px; border-radius:8px; background:var(--card); margin-bottom:8px; }
+.small-badge { font-size:12px; color:var(--muted); }
+.accordion { border:1px solid rgba(0,0,0,0.04); border-radius:8px; padding:10px; }
+.pontos-list { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.ponto-card { padding:8px; border-radius:6px; background:linear-gradient(90deg, rgba(0,0,0,0.02), transparent); cursor:pointer; width:220px; }
