@@ -1,10 +1,7 @@
-/* views/plans.js - CRUD para planos com máscara de moeda adaptativa
-   Implementação da máscara conforme solicitado:
-     - input type="text" com inputmode="decimal"
-     - formata em PT-BR (milhares com '.' e decimal com ',') exibindo sempre 2 casas
-     - aceita '.' ou ',' durante digitação e nos colados
-     - expõe getNumericValue() para obter Number pronto para persistir (ex.: 39.90)
-   Não usei bibliotecas externas — solução leve e suficiente para o protótipo.
+/* views/plans.js - CRUD para planos com feedback após salvar/editar
+   - Exibe toast de sucesso quando o plano é salvo/atualizado.
+   - Trata exceções e exibe mensagem de erro clara.
+   - Preparado para integração com Supabase: troque MockAPI.createPlan por supabase.from('plans').insert/update.
 */
 
 (function(){
@@ -12,7 +9,7 @@
 
   async function render(){
     root.innerHTML = '';
-    const header = document.createElement('div'); header.style.display='flex'; header.style.justifyContent='space-between';
+    const header = document.createElement('div'); header.style.display='flex'; header.style.justifyContent='space-between'; header.style.alignItems='center';
     const title = document.createElement('h2'); title.textContent = 'Planos';
     const add = document.createElement('button'); add.className='primary'; add.textContent='Novo plano';
     header.appendChild(title); header.appendChild(add); root.appendChild(header);
@@ -35,6 +32,7 @@
           if (!confirm('Excluir plano?')) return;
           MockDB.plans = MockDB.plans.filter(x=>x.id !== p.id);
           render();
+          showToast('Plano excluído', 'info');
         });
         right.appendChild(btnDel);
       }
@@ -205,6 +203,7 @@
         updateTelasWarning();
       },
 
+      // onSave agora trata erros e propaga para Modal; retornos e exceções preparados para Supabase
       onSave: async () => {
         const container = document.querySelector('#modals-root .modal-body');
         if (!container || !container._collectData) throw new Error('Erro ao coletar dados do formulário');
@@ -226,16 +225,29 @@
         if (d.validadeEmMeses > 12) d.validadeEmMeses = 12;
         if (d.telas < 1) d.telas = 1;
 
-        // Persistência mock
-        if (typeof plan !== 'undefined' && plan && plan.id) {
-          // atualização: para o protótipo usamos createPlan que insere; manteremos comportamento permissivo
-          await MockAPI.createPlan({ id: plan.id, nome: d.nome, telas: d.telas, validadeEmMeses: d.validadeEmMeses, preco: d.preco });
-        } else {
-          await MockAPI.createPlan({ nome: d.nome, telas: d.telas, validadeEmMeses: d.validadeEmMeses, preco: d.preco });
+        // Persistência: preparado para Supabase. No protótipo usamos MockAPI.createPlan.
+        try {
+          if (typeof plan !== 'undefined' && plan && plan.id) {
+            // Em Supabase: supabase.from('plans').update({...}).eq('id', plan.id)
+            await MockAPI.createPlan({ id: plan.id, nome: d.nome, telas: d.telas, validadeEmMeses: d.validadeEmMeses, preco: d.preco });
+          } else {
+            // Em Supabase: supabase.from('plans').insert([{ ... }])
+            await MockAPI.createPlan({ nome: d.nome, telas: d.telas, validadeEmMeses: d.validadeEmMeses, preco: d.preco });
+          }
+        } catch (err) {
+          // lança erro para o Modal exibir (Modal deve capturar e mostrar)
+          // adicionamos mais contexto para debug/usuário
+          const msg = err && err.message ? err.message : String(err);
+          throw new Error('Falha ao salvar o plano: ' + msg);
         }
       },
 
-      onDone: async () => { await render(); }
+      // onDone apos o fechamento do modal: re-render e toast de sucesso (pronto para usar resposta do Supabase)
+      onDone: async () => {
+        await render();
+        // mostrar confirmação
+        showToast('Plano salvo com sucesso', 'success');
+      }
     });
   }
 
@@ -305,9 +317,8 @@
       e.target.value = formatForDisplay(n);
     });
 
-    // on focus: mostra raw with dot as separator optionally (we keep formatted for simplicity)
+    // on focus: mostra formatted value (mantemos o formato para consistência)
     inputEl.addEventListener('focus', (e) => {
-      // keep formatted value to avoid confusing caret jumps; caret will go to end
       const n = parseRaw(e.target.value);
       if (!isNaN(n)) e.target.value = formatForDisplay(n);
     });
@@ -325,7 +336,6 @@
       ev.preventDefault();
       const text = (ev.clipboardData || window.clipboardData).getData('text') || '';
       const cleaned = text.replace(/[^\d,.\-]/g, '');
-      // insert cleaned and trigger blur-format after short delay so user sees sanitized content
       inputEl.value = cleaned;
       setTimeout(() => {
         const n = parseRaw(inputEl.value);
@@ -334,13 +344,53 @@
     });
   }
 
+  /* ---------------------------
+     Toast helper (simples)
+     --------------------------- */
+  function showToast(message, type = 'info', timeout = 3500) {
+    // type: success | info | error
+    const existing = document.getElementById('global-toast');
+    if (existing) existing.remove();
+
+    const t = document.createElement('div');
+    t.id = 'global-toast';
+    t.setAttribute('role','status');
+    t.style.position = 'fixed';
+    t.style.right = '20px';
+    t.style.bottom = '20px';
+    t.style.zIndex = 2000;
+    t.style.padding = '12px 16px';
+    t.style.borderRadius = '8px';
+    t.style.color = '#fff';
+    t.style.boxShadow = '0 6px 20px rgba(2,6,23,0.2)';
+    t.style.fontSize = '14px';
+    t.style.maxWidth = '320px';
+    t.style.backdropFilter = 'saturate(120%) blur(4px)';
+
+    if (type === 'success') {
+      t.style.background = 'linear-gradient(90deg,#10b981,#059669)';
+    } else if (type === 'error') {
+      t.style.background = 'linear-gradient(90deg,#ef4444,#dc2626)';
+    } else {
+      t.style.background = 'linear-gradient(90deg,#2563eb,#1e40af)';
+    }
+
+    t.textContent = message;
+    document.body.appendChild(t);
+
+    setTimeout(() => {
+      t.style.transition = 'opacity .3s ease, transform .3s ease';
+      t.style.opacity = '0';
+      t.style.transform = 'translateY(8px)';
+      setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 300);
+    }, timeout);
+  }
+
   window.PlansView = { render };
 
   // inicial render
   document.addEventListener('DOMContentLoaded', () => {
-    // se a view-root existir e estivermos na rota que exibe planos, renderizar
     if (document.getElementById('view-root')) {
-      // delay to ensure MockAPI and Auth initialized elsewhere
       setTimeout(() => { render(); }, 0);
     }
   });
