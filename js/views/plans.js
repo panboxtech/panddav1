@@ -1,9 +1,10 @@
-/* views/plans.js - simples CRUD para planos
-   Comentários importantes preservados:
-   - Implementa criação/edição de planos via Modal.open, reuso do modal.js.
-   - Validação: validadeEmMeses entre 1 e 12; telas tem aviso se >3, sem impedir valor maior.
-   - Campo PREÇO: exibe prefixo R$, aceita "." ou ","; obriga interação (clique) antes de salvar; salva como float com 2 casas.
-   - Formulário responsivo; inputs e botões adequados para mobile via CSS.
+/* views/plans.js - CRUD para planos com máscara de moeda adaptativa
+   Implementação da máscara conforme solicitado:
+     - input type="text" com inputmode="decimal"
+     - formata em PT-BR (milhares com '.' e decimal com ',') exibindo sempre 2 casas
+     - aceita '.' ou ',' durante digitação e nos colados
+     - expõe getNumericValue() para obter Number pronto para persistir (ex.: 39.90)
+   Não usei bibliotecas externas — solução leve e suficiente para o protótipo.
 */
 
 (function(){
@@ -87,7 +88,8 @@
         const precoInput = document.createElement('input');
         precoInput.type = 'text'; // aceitar "," e "."
         precoInput.name = 'preco';
-        precoInput.value = (typeof data.preco !== 'undefined' && data.preco !== null) ? Number(data.preco).toFixed(2) : '';
+        precoInput.id = 'currencyInput';
+        precoInput.value = (typeof data.preco !== 'undefined' && data.preco !== null && data.preco !== '') ? formatNumberToPtBR(Number(data.preco)) : '';
         precoInput.placeholder = '0,00';
         precoInput.setAttribute('inputmode','decimal'); // sugere teclado numérico em mobile
         precoInput.autocomplete = 'off';
@@ -99,16 +101,8 @@
         precoInput.addEventListener('focus', () => { precoTouched = true; });
         precoInput.addEventListener('click', () => { precoTouched = true; });
 
-        // Ao perder foco, formatar valor para 2 casas e substituir , por .
-        precoInput.addEventListener('blur', () => {
-          const parsed = parseCurrencyToFloat(precoInput.value);
-          if (!isNaN(parsed)) {
-            precoInput.value = parsed.toFixed(2).replace('.', ','); // mostrar com vírgula para PT-BR; armazenaremos float com dot ao salvar
-          } else {
-            // deixar vazio se inválido
-            precoInput.value = '';
-          }
-        });
+        // Attach mask behaviors
+        attachCurrencyMask(precoInput);
 
         // Montagem no container com espaçamento consistente
         const wrap = document.createElement('div');
@@ -196,8 +190,7 @@
         container._collectData = () => {
           // Validar interação no preço
           const precoRaw = precoInput.value || '';
-          // parseCurrencyToFloat aceita "." ou ","
-          const precoFloat = parseCurrencyToFloat(precoRaw);
+          const precoFloat = precoInput.getNumericValue ? precoInput.getNumericValue() : parseCurrencyToFloat(precoRaw);
           return {
             nome: nome.input.value,
             telas: parseInt(telasInput.value, 10) || 1,
@@ -210,26 +203,6 @@
 
         // Inicial update de warning
         updateTelasWarning();
-
-        // util: parse currency string to float; accepts "." or ","; returns Number or NaN
-        function parseCurrencyToFloat(v) {
-          if (v === null || v === undefined) return NaN;
-          const s = String(v).trim();
-          if (s.length === 0) return NaN;
-          // remove spaces and currency symbols
-          const cleaned = s.replace(/[^\d.,-]/g, '').replace(/\s+/g,'');
-          // if contains both comma and dot, assume dot is thousand separator and comma decimal (BR)\:
-          if (cleaned.indexOf(',') > -1 && cleaned.indexOf('.') > -1) {
-            // remove dots (thousand), replace comma with dot
-            return parseFloat(cleaned.replace(/\./g,'').replace(',', '.'));
-          }
-          // if only comma present, replace with dot
-          if (cleaned.indexOf(',') > -1) {
-            return parseFloat(cleaned.replace(',', '.'));
-          }
-          // else parse direct
-          return parseFloat(cleaned);
-        }
       },
 
       onSave: async () => {
@@ -266,5 +239,109 @@
     });
   }
 
+  /* ---------------------------
+     Máscara e utilitários de moeda
+     --------------------------- */
+
+  // formata Number para PT-BR com 2 casas: 1234.5 => "1.234,50"
+  function formatNumberToPtBR(n) {
+    if (n === null || n === undefined || isNaN(n)) return '';
+    return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+  }
+
+  // parse genérico (aceita "1.234,56" "1234.56" "1234,56" "1234" => Number)
+  function parseCurrencyToFloat(v) {
+    if (v === null || v === undefined) return NaN;
+    const s = String(v).trim();
+    if (s.length === 0) return NaN;
+    const cleaned = s.replace(/[^\d.,-]/g, '').replace(/\s+/g,'');
+    const hasComma = cleaned.indexOf(',') !== -1;
+    const hasDot = cleaned.indexOf('.') !== -1;
+    let normalized = cleaned;
+    if (hasComma && hasDot) {
+      // assume dot thousands, comma decimal
+      normalized = normalized.replace(/\./g,'').replace(',', '.');
+    } else if (hasComma && !hasDot) {
+      normalized = normalized.replace(',', '.');
+    }
+    const num = parseFloat(normalized);
+    return isNaN(num) ? NaN : num;
+  }
+
+  // implementa máscara leve: adapta milhares e decimal PT-BR, aceita . ou ,
+  function attachCurrencyMask(inputEl) {
+    if (!inputEl) return;
+
+    // converte string raw para Number (mesma lógica)
+    function parseRaw(raw) { return parseCurrencyToFloat(raw); }
+
+    function formatForDisplay(num) {
+      if (isNaN(num)) return '';
+      return formatNumberToPtBR(num);
+    }
+
+    // expõe método para obter valor numérico
+    inputEl.getNumericValue = () => {
+      const n = parseRaw(inputEl.value);
+      return isNaN(n) ? null : Number(n.toFixed(2));
+    };
+
+    // ao digitar: permitir chars numéricos, vírgula e ponto; forçar limpeza de demais
+    inputEl.addEventListener('input', (e) => {
+      const v = e.target.value;
+      // keep allowed chars only while typing
+      const cleaned = v.replace(/[^\d,.\-]/g, '');
+      // if user typed both separators, we still allow until blur normalizes
+      e.target.value = cleaned;
+    });
+
+    // on blur: parse e formatar para PT-BR com 2 casas
+    inputEl.addEventListener('blur', (e) => {
+      const n = parseRaw(e.target.value);
+      if (isNaN(n)) {
+        e.target.value = '';
+        return;
+      }
+      e.target.value = formatForDisplay(n);
+    });
+
+    // on focus: mostra raw with dot as separator optionally (we keep formatted for simplicity)
+    inputEl.addEventListener('focus', (e) => {
+      // keep formatted value to avoid confusing caret jumps; caret will go to end
+      const n = parseRaw(e.target.value);
+      if (!isNaN(n)) e.target.value = formatForDisplay(n);
+    });
+
+    // prevent invalid keys
+    inputEl.addEventListener('keydown', (ev) => {
+      const allowedNav = ['Backspace','Delete','Tab','Escape','Enter','ArrowLeft','ArrowRight','Home','End'];
+      if (allowedNav.includes(ev.key)) return;
+      const allowedPattern = /[0-9.,]/;
+      if (!allowedPattern.test(ev.key)) ev.preventDefault();
+    });
+
+    // support paste: clean and format on next tick
+    inputEl.addEventListener('paste', (ev) => {
+      ev.preventDefault();
+      const text = (ev.clipboardData || window.clipboardData).getData('text') || '';
+      const cleaned = text.replace(/[^\d,.\-]/g, '');
+      // insert cleaned and trigger blur-format after short delay so user sees sanitized content
+      inputEl.value = cleaned;
+      setTimeout(() => {
+        const n = parseRaw(inputEl.value);
+        if (!isNaN(n)) inputEl.value = formatForDisplay(n);
+      }, 50);
+    });
+  }
+
   window.PlansView = { render };
+
+  // inicial render
+  document.addEventListener('DOMContentLoaded', () => {
+    // se a view-root existir e estivermos na rota que exibe planos, renderizar
+    if (document.getElementById('view-root')) {
+      // delay to ensure MockAPI and Auth initialized elsewhere
+      setTimeout(() => { render(); }, 0);
+    }
+  });
 })();
