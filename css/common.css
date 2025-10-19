@@ -42,16 +42,25 @@ body > .layout, .layout {
   padding-top: var(--topbar-h); /* garante deslocamento do conteúdo */
 }
 
-/* Sidebar */
+/* -------------------------
+   SIDEBAR (estrutura e comportamento)
+   ------------------------- */
+
+/* Forçar que a sidebar use um layout em coluna e que o footer empurre para baixo */
 .sidebar {
-  width:var(--sidebar-w); min-width:var(--sidebar-w); background:var(--card); border-right:1px solid rgba(0,0,0,0.04);
-  display:flex; flex-direction:column; transition:width .2s ease, transform .18s ease; z-index:900; /* z-index menor que topbar para não sobrepor */
+  display: flex;
+  flex-direction: column;
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background:var(--card);
+  border-right:1px solid rgba(0,0,0,0.04);
+  transition:width .2s ease, transform .18s ease;
+  z-index:900;
 }
-.sidebar.collapsed { width:var(--sidebar-collapsed-w); min-width:var(--sidebar-collapsed-w); }
 
 /* When sidebar is collapsed on desktop hide logo and labels leaving only icons visible */
-/* This makes the collapsed sidebar act as an icon-only rail */
-.sidebar.collapsed .logo { display: none; } /* manter comentário e comportamento importante */
+.sidebar.collapsed { width:var(--sidebar-collapsed-w); min-width:var(--sidebar-collapsed-w); }
+.sidebar.collapsed .logo { display: none; }
 .sidebar.collapsed .label { display: none; }
 .sidebar.collapsed .menu-item { justify-content: center; padding: 12px 6px; }
 .sidebar.collapsed .menu-item .icon { display: inline-block; font-size: 18px; }
@@ -60,11 +69,58 @@ body > .layout, .layout {
 /* Sidebar header */
 .sidebar-header { display:flex; justify-content:space-between; align-items:center; padding:12px; }
 .logo { font-weight:700; }
-.menu-list { list-style:none; padding:8px; margin:0; flex:1; }
+
+/* Garante que o conteúdo principal da sidebar ocupe o espaço e empurre o footer para baixo */
+.sidebar .menu-list {
+  list-style:none;
+  padding:8px;
+  margin:0;
+  flex: 1 1 auto; /* permite crescer e encolher, ocupando espaço disponível */
+  overflow: auto;
+  padding-bottom: 12px; /* evitar que último item fique colado no footer */
+}
+
 .menu-item { display:flex; gap:10px; align-items:center; padding:10px; border-radius:8px; cursor:pointer; }
 .menu-item .label { white-space:nowrap; }
 .menu-item.selected { background:linear-gradient(90deg,var(--accent), rgba(0,0,0,0.03)); color:white; }
-.sidebar-footer { padding:12px; display:flex; align-items:center; gap:8px; position:relative; cursor:pointer; }
+
+/* Footer sempre visível ao final da coluna */
+.sidebar-footer {
+  margin-top: auto; /* empurra para o final do container da sidebar */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: transparent;
+  position: relative; /* mantém fluxo normal, permite ajustes internos */
+  z-index: 10;
+  cursor: pointer;
+}
+.sidebar-footer:focus { outline: 2px solid rgba(37,99,235,0.12); border-radius:8px; }
+
+/* Botão/área do avatar — aumentar hit area, centralizar verticalmente e visual consistente */
+.sidebar-footer .user-avatar {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.02));
+  font-weight: 700;
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+/* Texto do usuário no footer */
+.sidebar-footer .user-info { display: flex; flex-direction: column; min-width: 0; }
+.sidebar-footer .user-name { font-size: 14px; font-weight:600; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sidebar-footer .user-role { font-size:12px; color:var(--muted); }
+
+/* If sidebar is overlay ensure it stays above main content when expanded */
+.sidebar.expanded { z-index: 1050; }
 
 /* Main content */
 .main { flex:1; padding:20px; transition: margin-left .2s ease; z-index:800; /* garantir z-index menor que topbar */ }
@@ -207,12 +263,37 @@ label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
   .card { padding:18px; }
 }
 
-/* Responsividade */
-/* Mobile behaviour: sidebar acts as overlay from under the topbar */
+/* Mobile: sidebar overlay ocupa do topo (logo abaixo da topbar) até o bottom do viewport */
 @media (max-width: 900px) {
   .layout { flex-direction:column; }
-  .sidebar { position:fixed; inset:56px auto auto 0; height:calc(100vh - 56px); transform:translateX(-100%); transition:transform .2s ease; width:260px; }
-  .sidebar.expanded { transform:translateX(0); }
-  .sidebar.collapsed { transform:translateX(-100%); } /* collapsed não aplica no mobile */
-  .main { margin-top:56px; padding:12px; }
+  .sidebar {
+    position: fixed;
+    top: var(--topbar-h); /* garante que a sidebar comece abaixo da topbar */
+    bottom: 0;             /* garante que a sidebar não ultrapasse o bottom do viewport */
+    height: calc(100vh - var(--topbar-h));
+    transform: translateX(-100%);
+    transition: transform .2s ease;
+    overflow: hidden; /* menu-list tem overflow auto para scroll */
+    width: var(--sidebar-w);
+  }
+
+  .sidebar.expanded { transform: translateX(0); }
+
+  /* Garante que menu-list role tenha scroll independente, preservando footer visível */
+  .sidebar .menu-list {
+    max-height: calc(100vh - var(--topbar-h) - 140px); /* reserva espaço para header + footer */
+    overflow-y: auto;
+  }
+
+  /* Aumentar hit area do footer para toque */
+  .sidebar-footer { padding: 14px; }
+  .sidebar-footer .user-avatar { width:48px; height:48px; min-width:48px; min-height:48px; border-radius:12px; }
 }
+
+/* opção defensiva: se a sidebar tiver conteúdo muito curto, garantir footer não sobe demais */
+.sidebar .menu-list:empty + .sidebar-footer {
+  margin-top: auto;
+}
+
+/* Se quiser que o footer fique sempre sobre outros conteúdos quando sidebar for overlay */
+.sidebar.expanded { z-index: 1050; }
