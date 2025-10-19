@@ -2,6 +2,7 @@
    Comentários importantes preservados:
    - Implementa criação/edição de planos via Modal.open, reuso do modal.js.
    - Validação: validadeEmMeses entre 1 e 12; telas tem aviso se >3, sem impedir valor maior.
+   - Campo PREÇO: exibe prefixo R$, aceita "." ou ","; obriga interação (clique) antes de salvar; salva como float com 2 casas.
    - Formulário responsivo; inputs e botões adequados para mobile via CSS.
 */
 
@@ -19,7 +20,7 @@
     const plans = await MockAPI.getPlans();
     plans.forEach(p=>{
       const div = document.createElement('div'); div.className='client-card';
-      const left = document.createElement('div'); left.innerHTML = `<strong>${p.nome}</strong><div class="small-badge">${p.telas} telas • ${p.validadeEmMeses} meses • R$ ${p.preco}</div>`;
+      const left = document.createElement('div'); left.innerHTML = `<strong>${p.nome}</strong><div class="small-badge">${p.telas} telas • ${p.validadeEmMeses} meses • R$ ${Number(p.preco).toFixed(2)}</div>`;
       const right = document.createElement('div');
       const btnEdit = document.createElement('button'); btnEdit.className='flat-btn'; btnEdit.textContent='Editar';
       btnEdit.addEventListener('click', ()=> {
@@ -79,8 +80,35 @@
         validadeGroup.appendChild(validadeInput);
         validadeGroup.appendChild(validadePlus);
 
-        // Preço
-        const preco = h.createInput({label:'Preço', name:'preco', type:'number', value: (typeof data.preco !== 'undefined' && data.preco !== null) ? data.preco : 0});
+        // Preço (campo com prefixo R$) — usa input text para aceitar ',' e '.'
+        const precoLabel = document.createElement('label'); precoLabel.textContent = 'Preço (R$)';
+        const precoWrap = document.createElement('div'); precoWrap.className = 'input-currency';
+        const prefix = document.createElement('div'); prefix.className='currency-prefix'; prefix.textContent = 'R$';
+        const precoInput = document.createElement('input');
+        precoInput.type = 'text'; // aceitar "," e "."
+        precoInput.name = 'preco';
+        precoInput.value = (typeof data.preco !== 'undefined' && data.preco !== null) ? Number(data.preco).toFixed(2) : '';
+        precoInput.placeholder = '0,00';
+        precoInput.setAttribute('inputmode','decimal'); // sugere teclado numérico em mobile
+        precoInput.autocomplete = 'off';
+        precoInput.className = 'currency-input';
+        precoWrap.appendChild(prefix); precoWrap.appendChild(precoInput);
+
+        // Nota: força que o usuário clique/interaja no campo preço
+        let precoTouched = false;
+        precoInput.addEventListener('focus', () => { precoTouched = true; });
+        precoInput.addEventListener('click', () => { precoTouched = true; });
+
+        // Ao perder foco, formatar valor para 2 casas e substituir , por .
+        precoInput.addEventListener('blur', () => {
+          const parsed = parseCurrencyToFloat(precoInput.value);
+          if (!isNaN(parsed)) {
+            precoInput.value = parsed.toFixed(2).replace('.', ','); // mostrar com vírgula para PT-BR; armazenaremos float com dot ao salvar
+          } else {
+            // deixar vazio se inválido
+            precoInput.value = '';
+          }
+        });
 
         // Montagem no container com espaçamento consistente
         const wrap = document.createElement('div');
@@ -102,7 +130,13 @@
         wrap.appendChild(validadeWrap);
 
         // Preço
-        wrap.appendChild(preco.wrap);
+        wrap.appendChild(precoLabel);
+        wrap.appendChild(precoWrap);
+
+        // Nota sobre obrigatoriedade de clicar no preço
+        const precoNote = document.createElement('div'); precoNote.className = 'field-required-note';
+        precoNote.textContent = 'Clique no campo de preço e informe o valor antes de salvar.';
+        wrap.appendChild(precoNote);
 
         container.appendChild(wrap);
 
@@ -152,7 +186,7 @@
           validadeInput.value = val;
         });
         validadeInput.addEventListener('input', () => {
-          // allow manual input; but if out of range, don't block — provide min/max attributes
+          // allow manual input; keep in range visually
           let val = parseInt(validadeInput.value, 10);
           if (isNaN(val) || val < 1) validadeInput.value = 1;
           else if (val > 12) validadeInput.value = 12;
@@ -160,16 +194,42 @@
 
         // Expor função de coleta de dados do modal
         container._collectData = () => {
+          // Validar interação no preço
+          const precoRaw = precoInput.value || '';
+          // parseCurrencyToFloat aceita "." ou ","
+          const precoFloat = parseCurrencyToFloat(precoRaw);
           return {
             nome: nome.input.value,
             telas: parseInt(telasInput.value, 10) || 1,
             validadeEmMeses: parseInt(validadeInput.value, 10) || 1,
-            preco: parseFloat(preco.input.value) || 0
+            // salvamos preco como number (float) com 2 casas
+            preco: precoTouched && !isNaN(precoFloat) ? Number(precoFloat.toFixed(2)) : null,
+            _precoTouched: precoTouched
           };
         };
 
         // Inicial update de warning
         updateTelasWarning();
+
+        // util: parse currency string to float; accepts "." or ","; returns Number or NaN
+        function parseCurrencyToFloat(v) {
+          if (v === null || v === undefined) return NaN;
+          const s = String(v).trim();
+          if (s.length === 0) return NaN;
+          // remove spaces and currency symbols
+          const cleaned = s.replace(/[^\d.,-]/g, '').replace(/\s+/g,'');
+          // if contains both comma and dot, assume dot is thousand separator and comma decimal (BR)\:
+          if (cleaned.indexOf(',') > -1 && cleaned.indexOf('.') > -1) {
+            // remove dots (thousand), replace comma with dot
+            return parseFloat(cleaned.replace(/\./g,'').replace(',', '.'));
+          }
+          // if only comma present, replace with dot
+          if (cleaned.indexOf(',') > -1) {
+            return parseFloat(cleaned.replace(',', '.'));
+          }
+          // else parse direct
+          return parseFloat(cleaned);
+        }
       },
 
       onSave: async () => {
@@ -179,16 +239,24 @@
 
         // Validações importantes antes de criar/atualizar
         if (!d.nome || d.nome.trim().length === 0) throw new Error('Nome do plano é obrigatório');
+
+        // Verifica se usuário interagiu no campo preço e se valor parseou corretamente
+        if (!d._precoTouched) {
+          throw new Error('Você precisa clicar e informar o valor do campo Preço antes de salvar.');
+        }
+        if (d.preco === null || isNaN(d.preco)) {
+          throw new Error('Preço inválido. Informe um valor numérico (ex.: 39,90).');
+        }
+
+        // Garantir ranges mínimos
         if (d.validadeEmMeses < 1) d.validadeEmMeses = 1;
         if (d.validadeEmMeses > 12) d.validadeEmMeses = 12;
         if (d.telas < 1) d.telas = 1;
 
-        // Mock persist: se plan foi passada via initialData, atualizamos; caso contrário criamos novo
+        // Persistência mock
         if (typeof plan !== 'undefined' && plan && plan.id) {
-          // atualização no MockDB
+          // atualização: para o protótipo usamos createPlan que insere; manteremos comportamento permissivo
           await MockAPI.createPlan({ id: plan.id, nome: d.nome, telas: d.telas, validadeEmMeses: d.validadeEmMeses, preco: d.preco });
-          // Observação: MockAPI.createPlan no protótipo apenas insere; para simular update mantemos comportamento permissivo
-          // Em produção: usar supabase.from('plans').update(patch).eq('id', plan.id)
         } else {
           await MockAPI.createPlan({ nome: d.nome, telas: d.telas, validadeEmMeses: d.validadeEmMeses, preco: d.preco });
         }
