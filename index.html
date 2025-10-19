@@ -15,7 +15,7 @@
     <div class="brand">Pandda</div>
     <div class="top-actions">
       <button id="themeToggle" class="icon-btn" aria-label="Alternar tema">🌓</button>
-      <button id="logoutBtn" class="icon-btn" aria-label="Sair">⎋</button>
+      <!-- logoutBtn removido intencionalmente — logout será acessível via menu de perfil -->
     </div>
   </header>
 
@@ -43,17 +43,11 @@
         </li>
       </ul>
 
-      <div class="sidebar-footer" id="sidebarFooter" tabindex="0" aria-haspopup="true" aria-expanded="false">
+      <div class="sidebar-footer" id="sidebarFooter" tabindex="0" aria-haspopup="false" aria-expanded="false">
+        <!-- Mantemos apenas o avatar; removemos labels, role e dropdown para simplificar conforme solicitado -->
         <div class="user-avatar" aria-hidden="true">AD</div>
-        <div class="user-info">
-          <div class="user-name">Admin</div>
-          <div class="user-role small-badge">Master</div>
-        </div>
-
-        <div class="sidebar-footer-dropdown" role="menu" aria-hidden="true">
-          <button class="dropdown-item" id="myProfileBtn" role="menuitem">Meu perfil</button>
-          <button class="dropdown-item" id="signOutBtn" role="menuitem">Sair</button>
-        </div>
+        <!-- user-info removido intencionalmente -->
+        <!-- sidebar-footer-dropdown removido intencionalmente -->
       </div>
     </nav>
 
@@ -75,7 +69,7 @@
   <script src="js/views/plans.js"></script>
   <script src="js/views/apps.js"></script>
 
-  <!-- Adicionar topbar.js antes do main.js para que Topbar esteja disponível quando main inicializar -->
+  <!-- Topbar (controla mobileMenuBtn, tema e menu de perfil) -->
   <script src="js/topbar.js"></script>
 
   <script src="js/main.js"></script>
