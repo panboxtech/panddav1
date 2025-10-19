@@ -56,7 +56,7 @@
       e.stopPropagation();
       // Abre modal de perfil usando Modal (já presente no projeto).
       // Se for integrar com Supabase, aqui você pode abrir o modal e carregar dados adicionais
-      // via supabase.from('users').select(...).eq('id', user.id) para preencher os campos.
+      // via supabase.from('users').select(...).eq('id', userId).single() para preencher os campos.
       Modal.open({
         title: 'Meu perfil',
         contentBuilder(container) {
@@ -67,14 +67,14 @@
           info.appendChild(email);
           info.appendChild(role);
           // Aqui você pode adicionar inputs para editar perfil e, na onSave do Modal,
-          // chamar supabase.from('users').update({ ... }).eq('id', user.id)
+          // chamar supabase.from('users').update({ ... }).eq('id', userId)
           container.appendChild(info);
         },
         onSave: async () => {
           // Em implementação com Supabase: atualizar user na tabela "users" aqui.
           // Exemplo comentado:
-          // const session = await supabase.auth.getSession();
-          // const userId = session?.data?.session?.user?.id;
+          // const { data: session } = await supabase.auth.getSession();
+          // const userId = session?.user?.id;
           // await supabase.from('users').update({ name, ... }).eq('id', userId);
           return Promise.resolve();
         }
@@ -88,7 +88,7 @@
       // Ao migrar para Supabase substituir por supabase.auth.signOut()
       // e garantir que Main.onAuthChanged seja chamado via onAuthStateChange.
       try {
-        // Se supabase estiver configurado e quiser usar:
+        // Exemplo de substituição:
         // if (typeof supabase !== 'undefined' && supabase.auth) {
         //   await supabase.auth.signOut();
         // } else {
