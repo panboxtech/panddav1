@@ -1,23 +1,17 @@
 /**
  * topbar.js
  *
- * Versão reescrita do componente Topbar seguindo estas premissas:
- * - Não injeta HTML por string (sem innerHTML) para manter legibilidade e segurança.
- * - Reusa a estrutura existente no index.html quando disponível (evita duplicação).
- * - Cria o menu de perfil apenas uma vez e o reutiliza, evitando acúmulo no DOM.
- * - Usa fallback para exibir nome do usuário (email quando name ausente).
- * - Sincroniza alternância de tema com localStorage na chave "pandda_theme".
- * - Comentários explicativos mostram exatamente onde integrar o Supabase e o que substituir.
+ * Responsabilidades:
+ * - Renderizar/atualizar a topbar (marca, botão de tema, botão de perfil).
+ * - Gerenciar menu de perfil (criação única, não acumula elementos no DOM).
+ * - Sincronizar tema com localStorage (chave "pandda_theme").
+ * - Controlar comportamento do botão #mobileMenuBtn:
+ *     * Em mobile (<=900px) alterna sidebar.expanded (overlay).
+ *     * Em desktop alterna sidebar.collapsed (colapsa para ícones).
  *
- * Observação sobre integração com Supabase:
- * - Para autenticação substituir chamadas a Auth.getUser / Auth.logout por uso de
- *   supabase.auth.getSession() / supabase.auth.signOut() e reagir a onAuthStateChange.
- * - Para obter dados do usuário (nome, role) você pode manter uma tabela "users"
- *   e buscar campos adicionais após autenticação: supabase.from('users').select(...).eq('id', user.id)
- *
- * Uso:
- * - O arquivo exporta window.Topbar.render() que monta/atualiza o conteúdo da topbar.
- * - Chamar Topbar.render() após o carregamento do usuário ou após mudanças de login.
+ * Observações Supabase (onde substituir):
+ * - Logout: substituir Auth.logout() por supabase.auth.signOut() quando supabase estiver disponível.
+ * - Carregar dados extras do usuário (nome/role): usar supabase.from('users').select(...).eq('id', userId).
  */
 
 (function () {
@@ -28,7 +22,7 @@
   let profileBtn = null;
   let themeBtn = null;
 
-  // Cria um elemento com atributos e retorno do elemento
+  // Cria elemento DOM com opções simples (sem innerHTML)
   function createEl(tag, opts = {}) {
     const el = document.createElement(tag);
     if (opts.className) el.className = opts.className;
@@ -42,21 +36,23 @@
     return el;
   }
 
-  // Garante que exista apenas um menu global e o retorna
+  // Detecta se estamos em "mobile" (mesma quebra usada no CSS)
+  function isMobileView() {
+    return window.matchMedia('(max-width:900px)').matches;
+  }
+
+  // Garante criação única do menu de perfil
   function ensureProfileMenu() {
     if (menuEl && document.body.contains(menuEl)) return menuEl;
 
     menuEl = createEl('div', { className: 'profile-menu hidden', attrs: { role: 'menu' } });
-    // Botões do menu montados via DOM APIs (sem innerHTML)
+
     const profileItem = createEl('button', { className: 'menu-item', text: 'Meu perfil', attrs: { 'data-action': 'profile', role: 'menuitem' } });
     const logoutItem = createEl('button', { className: 'menu-item', text: 'Sair', attrs: { 'data-action': 'logout', role: 'menuitem' } });
 
-    // Eventos
     profileItem.addEventListener('click', (e) => {
       e.stopPropagation();
-      // Abre modal de perfil usando Modal (já presente no projeto).
-      // Se for integrar com Supabase, aqui você pode abrir o modal e carregar dados adicionais
-      // via supabase.from('users').select(...).eq('id', userId).single() para preencher os campos.
+      // Ao integrar Supabase, busque dados extras aqui e populate modal
       Modal.open({
         title: 'Meu perfil',
         contentBuilder(container) {
@@ -66,16 +62,10 @@
           const role = createEl('div', { text: `Papel: ${user.role || '-'}` });
           info.appendChild(email);
           info.appendChild(role);
-          // Aqui você pode adicionar inputs para editar perfil e, na onSave do Modal,
-          // chamar supabase.from('users').update({ ... }).eq('id', userId)
           container.appendChild(info);
         },
         onSave: async () => {
-          // Em implementação com Supabase: atualizar user na tabela "users" aqui.
-          // Exemplo comentado:
-          // const { data: session } = await supabase.auth.getSession();
-          // const userId = session?.user?.id;
-          // await supabase.from('users').update({ name, ... }).eq('id', userId);
+          // Em Supabase: supabase.from('users').update(...).eq('id', userId)
           return Promise.resolve();
         }
       });
@@ -84,11 +74,8 @@
 
     logoutItem.addEventListener('click', async (e) => {
       e.stopPropagation();
-      // Fluxo atual do protótipo usa Auth.logout() (localStorage).
-      // Ao migrar para Supabase substituir por supabase.auth.signOut()
-      // e garantir que Main.onAuthChanged seja chamado via onAuthStateChange.
       try {
-        // Exemplo de substituição:
+        // Substituir por supabase.auth.signOut() quando integrar:
         // if (typeof supabase !== 'undefined' && supabase.auth) {
         //   await supabase.auth.signOut();
         // } else {
@@ -108,13 +95,11 @@
     return menuEl;
   }
 
-  // Mostra/posiciona o menu relativo ao botão de perfil
+  // Posiciona e mostra o menu relativo ao botão de perfil
   function showProfileMenu() {
     const menu = ensureProfileMenu();
     if (!profileBtn) return;
     const rect = profileBtn.getBoundingClientRect();
-
-    // Calcula posição simples: abaixo do botão e alinhado à direita do botão
     menu.style.position = 'absolute';
     menu.style.top = `${rect.bottom + 6}px`;
     menu.style.right = `${window.innerWidth - rect.right}px`;
@@ -127,34 +112,25 @@
     if (profileBtn) profileBtn.setAttribute('aria-expanded', 'false');
   }
 
-  // Sincroniza estado do tema com localStorage e atualiza attribute no html
+  // Tema
   function setTheme(next) {
     const rootDoc = document.documentElement;
     if (next === 'dark') rootDoc.setAttribute('data-theme', 'dark');
     else rootDoc.removeAttribute('data-theme');
-    try {
-      localStorage.setItem(THEME_KEY, next === 'dark' ? 'dark' : 'light');
-    } catch (e) {
-      // localStorage pode falhar em contextos restritos; ignorar silenciosamente
-    }
+    try { localStorage.setItem(THEME_KEY, next === 'dark' ? 'dark' : 'light'); } catch (e) {}
   }
-
-  // Alterna tema baseado no valor atual (lê attribute)
   function toggleTheme() {
     const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
     const next = current === 'dark' ? 'light' : 'dark';
     setTheme(next);
   }
 
-  // Atualiza texto e role do botão de perfil com dados do usuário
+  // Atualiza label do botão de perfil com fallback (name || email)
   function updateProfileButton(user) {
     if (!profileBtn) return;
     const display = (user && (user.name || user.email)) ? (user.name || user.email) : 'Usuário';
-    // Limitar texto para evitar overflow mantendo legibilidade
     const label = createEl('span', { text: display });
     const role = createEl('span', { className: 'role', text: ` ${user?.role || 'Admin'}` });
-
-    // Limpar conteúdo atual com cuidado (não recriar attributes essenciais)
     while (profileBtn.firstChild) profileBtn.removeChild(profileBtn.firstChild);
     const strong = createEl('strong');
     strong.appendChild(label);
@@ -162,45 +138,78 @@
     profileBtn.appendChild(role);
   }
 
-  // Monta a estrutura da topbar usando elementos existentes quando possível
+  // Controlador para o botão que fica na topbar (#mobileMenuBtn).
+  // Usa a mesma lógica anterior do protótipo: mobile -> overlay; desktop -> collapsed.
+  function attachMobileMenuHandler() {
+    const btn = document.getElementById('mobileMenuBtn');
+    const sidebar = document.getElementById('sidebar');
+    if (!btn || !sidebar) return;
+
+    // remova possíveis listeners duplicados antes de anexar
+    btn.replaceWith(btn.cloneNode(true));
+    const freshBtn = document.getElementById('mobileMenuBtn');
+
+    freshBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (isMobileView()) {
+        // overlay: expand/collapse via class 'expanded'
+        sidebar.classList.toggle('expanded');
+      } else {
+        // desktop: alterna colapso (apenas ícones)
+        sidebar.classList.toggle('collapsed');
+      }
+      // Ao alternar sidebar pelo botão, fechar o menu de perfil caso aberto
+      hideProfileMenu();
+    });
+
+    // fechar sidebar overlay se clicar fora quando em mobile
+    document.addEventListener('click', (e) => {
+      if (!isMobileView()) return;
+      if (!sidebar.contains(e.target) && !freshBtn.contains(e.target)) {
+        sidebar.classList.remove('expanded');
+      }
+    });
+
+    // Ao redimensionar, garantir que estados inconsistentes não persistam
+    window.addEventListener('resize', () => {
+      if (isMobileView()) {
+        sidebar.classList.remove('collapsed'); // garantir legibilidade em mobile
+      } else {
+        sidebar.classList.remove('expanded'); // remover overlay no desktop
+      }
+    });
+  }
+
+  // Renderiza topbar reutilizando a .topbar do HTML (ou criando se ausente)
   function render() {
     root = document.querySelector(ROOT_SELECTOR);
     if (!root) {
-      // Se o index.html não contém .topbar, criamos a estrutura básica para evitar erros
       root = createEl('header', { className: 'topbar' });
       document.body.insertBefore(root, document.body.firstChild);
     }
-
-    // Limpa apenas o conteúdo (mantendo o elemento raiz)
+    // limpar conteúdo atual
     root.innerHTML = '';
 
-    // Brand (usar marca consistente Pandda)
-    const brand = createEl('div', { className: 'brand' });
-    brand.textContent = 'Pandda';
+    // marca
+    const brand = createEl('div', { className: 'brand', text: 'Pandda' });
 
-    // Árvore direita (botões)
+    // container direito
     const right = createEl('div');
     right.style.display = 'flex';
     right.style.alignItems = 'center';
     right.style.gap = '12px';
 
-    // Botão de tema (reutiliza lógica existente do Main para persistência)
+    // botão de tema
     themeBtn = createEl('button', { className: 'icon-btn', attrs: { 'aria-label': 'Alternar tema' } });
     themeBtn.textContent = '🌓';
-    themeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleTheme();
-    });
+    themeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleTheme(); });
 
-    // Botão de perfil (criado sem innerHTML); armazenamos referência global local
+    // botão de perfil
     profileBtn = createEl('button', { className: 'profile-btn', attrs: { 'aria-haspopup': 'true', 'aria-expanded': 'false' } });
-    // Preenchimento inicial (será atualizado por updateProfileButton)
     const placeholder = createEl('strong', { text: 'Usuário' });
     profileBtn.appendChild(placeholder);
-    const roleSpan = createEl('span', { className: 'role', text: ' Admin' });
-    profileBtn.appendChild(roleSpan);
+    profileBtn.appendChild(createEl('span', { className: 'role', text: ' Admin' }));
 
-    // Handler de clique abre/fecha menu
     profileBtn.addEventListener('click', (ev) => {
       ev.stopPropagation();
       const isHidden = !ensureProfileMenu() || ensureProfileMenu().classList.contains('hidden');
@@ -208,15 +217,13 @@
       else hideProfileMenu();
     });
 
-    // Append nodes
     right.appendChild(themeBtn);
     right.appendChild(profileBtn);
 
-    // Inserir na root
     root.appendChild(brand);
     root.appendChild(right);
 
-    // Garante que clique fora fecha o menu
+    // comportamento geral do clique fora
     document.addEventListener('click', (e) => {
       if (!menuEl) return;
       if (!menuEl.contains(e.target) && !profileBtn.contains(e.target)) {
@@ -224,34 +231,23 @@
       }
     });
 
-    // Ao redimensionar, reposicionar (quando menu estiver visível)
-    window.addEventListener('resize', () => {
-      if (menuEl && !menuEl.classList.contains('hidden')) {
-        showProfileMenu();
-      }
-    });
-
-    // Sincronizar estado do tema inicial com localStorage
+    // sincronizar tema salvo
     try {
       const saved = localStorage.getItem(THEME_KEY) || 'light';
       setTheme(saved === 'dark' ? 'dark' : 'light');
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
 
-    // Atualizar botão de perfil com dados atuais do usuário
-    const user = Auth.getUser();
-    updateProfileButton(user);
-    // Assegurar menu já criado e eventos configurados
+    // preencher dados do usuário atual
+    updateProfileButton(Auth.getUser());
+
+    // criar menu (uma vez) e configurar o handler do botão mobile/sidebar
     ensureProfileMenu();
+    attachMobileMenuHandler();
   }
 
-  // Export público: render e uma função utilitária para forçar atualização do perfil
+  // API pública
   window.Topbar = {
     render,
-    // Atualiza apenas a seção do perfil (útil quando o usuário loga/desloga)
-    refreshProfile(user) {
-      updateProfileButton(user || Auth.getUser());
-    }
+    refreshProfile(user) { updateProfileButton(user || Auth.getUser()); }
   };
 })();
