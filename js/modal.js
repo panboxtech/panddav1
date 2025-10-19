@@ -1,10 +1,11 @@
 /* modal.js
-   Corrigido:
-     - Evita acessar activeModal após possíveis mudanças assíncronas capturando uma referência local (modalCtx)
-       no handler de salvar para usar opts e elementos relacionados de forma segura.
-     - Garante que erros sejam tratados e exibidos sem lançar TypeError por leitura de propriedades de null.
-     - Mantém comportamento: não fecha ao clicar fora por padrão; fecha somente em X, Cancelar, Salvar (após sucesso) ou Modal.close().
-     - Helpers: createInput, createSelect, createTextarea, createCheckbox, createSwitch.
+   Versão estável:
+     - Modal.open(opts) abre um modal reutilizando #modals-root.
+     - Não fecha ao clicar fora por padrão; fecha apenas ao clicar em X, no botão Cancelar, em Salvar (após sucesso) ou por chamada a Modal.close().
+     - Fornece helpers robustos para contentBuilder: createInput, createSelect, createTextarea, createCheckbox, createSwitch.
+     - Handler de salvar captura contexto estável (modalCtx) para evitar acesso a activeModal após mudanças assíncronas.
+     - Exibe erro inline no modal em caso de falha no onSave e não deixa o modal fechar.
+     - Mantém focus trap básico e acessibilidade mínima.
 */
 
 const Modal = (function(){
@@ -154,7 +155,6 @@ const Modal = (function(){
           Object.keys(def.attrs).forEach(k => select.setAttribute(k, def.attrs[k]));
         }
         const opts = def.options || [];
-        // add empty placeholder option if provided
         if (def.placeholder) {
           const ph = document.createElement('option');
           ph.value = '';
@@ -296,7 +296,6 @@ const Modal = (function(){
           await modalCtx.opts.onSave();
         }
         // onSave succeeded: close modal and call onDone using latest activeModal (if still present)
-        // store onDone to call after close
         const onDoneFn = modalCtx.opts && typeof modalCtx.opts.onDone === 'function' ? modalCtx.opts.onDone : null;
         close(); // safe to close here
         if (onDoneFn) {
