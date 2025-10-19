@@ -1,11 +1,10 @@
 /* modal.js
-   Atualizado:
-     - Os helpers passados para contentBuilder agora oferecem:
-         createInput, createSelect, createTextarea, createCheckbox, createSwitch
-       com API consistente com o uso nas views (label, name, value, options, required, attrs).
-     - Melhor tratamento de erros: erro claro se contentBuilder lançar; onSave verifica container._collectData e lança erro legível se ausente.
-     - Mantém comportamento de não fechar ao clicar fora por padrão; fecha apenas por X/Cancelar/Salvar/Modal.close().
-     - Mantém foco/aria básico e suporte a onSave/onDone/onCancel.
+   Corrigido:
+     - Evita acessar activeModal após possíveis mudanças assíncronas capturando uma referência local (modalCtx)
+       no handler de salvar para usar opts e elementos relacionados de forma segura.
+     - Garante que erros sejam tratados e exibidos sem lançar TypeError por leitura de propriedades de null.
+     - Mantém comportamento: não fecha ao clicar fora por padrão; fecha somente em X, Cancelar, Salvar (após sucesso) ou Modal.close().
+     - Helpers: createInput, createSelect, createTextarea, createCheckbox, createSwitch.
 */
 
 const Modal = (function(){
@@ -113,7 +112,6 @@ const Modal = (function(){
       }
     }
     document.addEventListener('keydown', onKey);
-    // focus first focusable element or the close button
     try { (first || modalEl.querySelector('.flat-btn')).focus(); } catch(e){ /* ignore */ }
     return () => document.removeEventListener('keydown', onKey);
   }
@@ -155,8 +153,16 @@ const Modal = (function(){
         if (def.attrs) {
           Object.keys(def.attrs).forEach(k => select.setAttribute(k, def.attrs[k]));
         }
-        // def.options: array of { value, label } or simple strings
         const opts = def.options || [];
+        // add empty placeholder option if provided
+        if (def.placeholder) {
+          const ph = document.createElement('option');
+          ph.value = '';
+          ph.textContent = def.placeholder;
+          ph.disabled = !!def.placeholderDisabled;
+          ph.selected = def.value === undefined || def.value === null || def.value === '';
+          select.appendChild(ph);
+        }
         opts.forEach(o => {
           const option = document.createElement('option');
           if (typeof o === 'string') {
@@ -204,7 +210,6 @@ const Modal = (function(){
       },
 
       createSwitch(def = {}) {
-        // small visual switch (checkbox under the hood)
         return this.createCheckbox(def);
       }
     };
@@ -236,7 +241,7 @@ const Modal = (function(){
     // overlay click: only close if explicitly allowed
     s.overlay.addEventListener('click', (ev) => {
       if (ev.target === s.overlay) {
-        if (activeModal.opts.closeOnOverlayClick) {
+        if (activeModal && activeModal.opts && activeModal.opts.closeOnOverlayClick) {
           close();
         } else {
           ev.stopPropagation();
@@ -246,7 +251,7 @@ const Modal = (function(){
 
     // close X
     s.closeBtn.addEventListener('click', () => {
-      if (activeModal.opts && typeof activeModal.opts.onCancel === 'function') {
+      if (activeModal && activeModal.opts && typeof activeModal.opts.onCancel === 'function') {
         try { activeModal.opts.onCancel(); } catch(e){ console.error(e); }
       }
       close();
@@ -254,36 +259,55 @@ const Modal = (function(){
 
     // cancel button
     s.cancelBtn.addEventListener('click', async () => {
-      if (activeModal.opts && typeof activeModal.opts.onCancel === 'function') {
+      if (activeModal && activeModal.opts && typeof activeModal.opts.onCancel === 'function') {
         try { await activeModal.opts.onCancel(); } catch(e){ console.error(e); }
       }
       close();
     });
 
-    // save button: call onSave with error handling
+    // save button: capture a stable modal context and use it during the async flow
     s.saveBtn.addEventListener('click', async () => {
-      if (!activeModal) return;
-      s.saveBtn.disabled = true;
-      const prevText = s.saveBtn.textContent;
-      s.saveBtn.textContent = activeModal.opts.savingText || 'Salvando...';
+      // capture context locally to avoid race where activeModal becomes null during async ops
+      const modalCtx = activeModal ? {
+        body: activeModal.body,
+        saveBtn: activeModal.saveBtn,
+        opts: activeModal.opts
+      } : null;
+
+      if (!modalCtx) {
+        // modal already closed or not initialized; defensive no-op
+        console.warn('Salvar acionado, mas modal já foi fechado.');
+        return;
+      }
+
+      // quick validation: ensure body._collectData is present before attempting onSave
+      if (!modalCtx.body._collectData || typeof modalCtx.body._collectData !== 'function') {
+        showModalError(modalCtx.body, 'Formulário inválido: função de coleta de dados ausente.');
+        return;
+      }
+
+      // disable UI and show saving text
+      modalCtx.saveBtn.disabled = true;
+      const prevText = modalCtx.saveBtn.textContent;
+      modalCtx.saveBtn.textContent = modalCtx.opts.savingText || 'Salvando...';
+
       try {
-        if (activeModal.opts && typeof activeModal.opts.onSave === 'function') {
-          // ensure that contentBuilder had chance to attach container._collectData
-          if (!s.body._collectData || typeof s.body._collectData !== 'function') {
-            throw new Error('Formulário inválido: faltou função de coleta de dados (container._collectData).');
-          }
-          await activeModal.opts.onSave();
+        if (modalCtx.opts && typeof modalCtx.opts.onSave === 'function') {
+          await modalCtx.opts.onSave();
         }
-        // closed successfully
-        close();
-        if (activeModal.opts && typeof activeModal.opts.onDone === 'function') {
-          try { await activeModal.opts.onDone(); } catch(e){ console.error(e); }
+        // onSave succeeded: close modal and call onDone using latest activeModal (if still present)
+        // store onDone to call after close
+        const onDoneFn = modalCtx.opts && typeof modalCtx.opts.onDone === 'function' ? modalCtx.opts.onDone : null;
+        close(); // safe to close here
+        if (onDoneFn) {
+          try { await onDoneFn(); } catch(e){ console.error('Erro em onDone:', e); }
         }
       } catch (err) {
-        s.saveBtn.disabled = false;
-        s.saveBtn.textContent = prevText;
+        // restore UI state
+        modalCtx.saveBtn.disabled = false;
+        modalCtx.saveBtn.textContent = prevText;
         const msg = err && err.message ? err.message : String(err);
-        showModalError(s.body, msg);
+        showModalError(modalCtx.body, msg);
         console.error('Modal save error:', err);
       }
     });
