@@ -182,6 +182,9 @@ label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
 .field-error { color: var(--danger); font-size:12px; margin-top:6px; }
 .field-required-note { font-size:12px; color:var(--muted); margin-top:6px; }
 
+/* Máscara: garantir monospaced para números e boa largura */
+.currency-input { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; letter-spacing:0.3px; }
+
 /* Responsividade para mobile - aumentar toque e fonte */
 @media (max-width: 480px) {
   input[type="text"],
