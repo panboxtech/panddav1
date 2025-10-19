@@ -1,10 +1,11 @@
 /* modal.js
-   Comportamento:
-     - Modal.open(opts) abre um modal reutilizando #modals-root.
-     - Por padrão closeOnOverlayClick = false (não fecha ao clicar fora).
-     - Fecha somente ao clicar no botão X, no botão Cancelar, ou por chamada a Modal.close().
-     - Mantém hooks: contentBuilder(container, initialData, helpers), onSave, onDone, onCancel.
-     - Retém acessibilidade básica (focus trap simples, aria).
+   Atualizado:
+     - Os helpers passados para contentBuilder agora oferecem:
+         createInput, createSelect, createTextarea, createCheckbox, createSwitch
+       com API consistente com o uso nas views (label, name, value, options, required, attrs).
+     - Melhor tratamento de erros: erro claro se contentBuilder lançar; onSave verifica container._collectData e lança erro legível se ausente.
+     - Mantém comportamento de não fechar ao clicar fora por padrão; fecha apenas por X/Cancelar/Salvar/Modal.close().
+     - Mantém foco/aria básico e suporte a onSave/onDone/onCancel.
 */
 
 const Modal = (function(){
@@ -106,20 +107,111 @@ const Modal = (function(){
           }
         }
       } else if (e.key === 'Escape') {
-        // closing on Escape only when allowed via option
         if (activeModal && activeModal.opts && activeModal.opts.allowEscape) {
           Modal.close();
         }
       }
     }
     document.addEventListener('keydown', onKey);
-    first.focus();
+    // focus first focusable element or the close button
+    try { (first || modalEl.querySelector('.flat-btn')).focus(); } catch(e){ /* ignore */ }
     return () => document.removeEventListener('keydown', onKey);
+  }
+
+  function buildFieldWrapper({ labelText, required }) {
+    const wrap = document.createElement('div');
+    wrap.className = 'field';
+    if (labelText) {
+      const label = document.createElement('label');
+      label.textContent = labelText + (required ? ' *' : '');
+      wrap.appendChild(label);
+    }
+    return wrap;
+  }
+
+  // Helpers factory: cria elementos de formulário reutilizáveis para contentBuilder
+  function createHelpers(container) {
+    return {
+      createInput(def = {}) {
+        const wrap = buildFieldWrapper({ labelText: def.label, required: !!def.required });
+        const input = document.createElement('input');
+        input.name = def.name || '';
+        input.type = def.type || 'text';
+        if (def.value !== undefined && def.value !== null) input.value = def.value;
+        if (def.placeholder) input.placeholder = def.placeholder;
+        if (def.required) input.required = true;
+        if (def.attrs) {
+          Object.keys(def.attrs).forEach(k => input.setAttribute(k, def.attrs[k]));
+        }
+        wrap.appendChild(input);
+        return { wrap, input };
+      },
+
+      createSelect(def = {}) {
+        const wrap = buildFieldWrapper({ labelText: def.label, required: !!def.required });
+        const select = document.createElement('select');
+        select.name = def.name || '';
+        if (def.required) select.required = true;
+        if (def.attrs) {
+          Object.keys(def.attrs).forEach(k => select.setAttribute(k, def.attrs[k]));
+        }
+        // def.options: array of { value, label } or simple strings
+        const opts = def.options || [];
+        opts.forEach(o => {
+          const option = document.createElement('option');
+          if (typeof o === 'string') {
+            option.value = o;
+            option.textContent = o;
+          } else {
+            option.value = o.value;
+            option.textContent = o.label;
+          }
+          if (def.value !== undefined && String(option.value) === String(def.value)) option.selected = true;
+          select.appendChild(option);
+        });
+        wrap.appendChild(select);
+        return { wrap, select };
+      },
+
+      createTextarea(def = {}) {
+        const wrap = buildFieldWrapper({ labelText: def.label, required: !!def.required });
+        const ta = document.createElement('textarea');
+        ta.name = def.name || '';
+        if (def.value !== undefined) ta.value = def.value;
+        if (def.placeholder) ta.placeholder = def.placeholder;
+        if (def.attrs) {
+          Object.keys(def.attrs).forEach(k => ta.setAttribute(k, def.attrs[k]));
+        }
+        wrap.appendChild(ta);
+        return { wrap, textarea: ta };
+      },
+
+      createCheckbox(def = {}) {
+        const wrap = document.createElement('div');
+        wrap.className = 'field';
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.name = def.name || '';
+        if (def.checked) input.checked = true;
+        if (def.attrs) {
+          Object.keys(def.attrs).forEach(k => input.setAttribute(k, def.attrs[k]));
+        }
+        label.appendChild(input);
+        label.appendChild(document.createTextNode(' ' + (def.label || '')));
+        wrap.appendChild(label);
+        return { wrap, input };
+      },
+
+      createSwitch(def = {}) {
+        // small visual switch (checkbox under the hood)
+        return this.createCheckbox(def);
+      }
+    };
   }
 
   async function open(opts = {}) {
     if (activeModal) {
-      // fechar modal ativo antes de abrir outro
       close();
     }
 
@@ -128,7 +220,6 @@ const Modal = (function(){
     root.appendChild(s.overlay);
     root.setAttribute('aria-hidden','false');
 
-    // attach data
     activeModal = {
       root,
       overlay: s.overlay,
@@ -142,20 +233,18 @@ const Modal = (function(){
       opts: Object.assign({ closeOnOverlayClick: false, allowEscape: false }, opts)
     };
 
-    // Prevent overlay click closing unless explicitly enabled
+    // overlay click: only close if explicitly allowed
     s.overlay.addEventListener('click', (ev) => {
-      // if click directly on overlay (not inside dialog)
       if (ev.target === s.overlay) {
         if (activeModal.opts.closeOnOverlayClick) {
           close();
         } else {
-          // ignore outside clicks
           ev.stopPropagation();
         }
       }
     });
 
-    // Close button (X) behavior: explicit close
+    // close X
     s.closeBtn.addEventListener('click', () => {
       if (activeModal.opts && typeof activeModal.opts.onCancel === 'function') {
         try { activeModal.opts.onCancel(); } catch(e){ console.error(e); }
@@ -163,7 +252,7 @@ const Modal = (function(){
       close();
     });
 
-    // Cancel button behavior: explicit close
+    // cancel button
     s.cancelBtn.addEventListener('click', async () => {
       if (activeModal.opts && typeof activeModal.opts.onCancel === 'function') {
         try { await activeModal.opts.onCancel(); } catch(e){ console.error(e); }
@@ -171,7 +260,7 @@ const Modal = (function(){
       close();
     });
 
-    // Save button behavior: call onSave and handle errors
+    // save button: call onSave with error handling
     s.saveBtn.addEventListener('click', async () => {
       if (!activeModal) return;
       s.saveBtn.disabled = true;
@@ -179,15 +268,18 @@ const Modal = (function(){
       s.saveBtn.textContent = activeModal.opts.savingText || 'Salvando...';
       try {
         if (activeModal.opts && typeof activeModal.opts.onSave === 'function') {
+          // ensure that contentBuilder had chance to attach container._collectData
+          if (!s.body._collectData || typeof s.body._collectData !== 'function') {
+            throw new Error('Formulário inválido: faltou função de coleta de dados (container._collectData).');
+          }
           await activeModal.opts.onSave();
         }
-        // close and call onDone
+        // closed successfully
         close();
         if (activeModal.opts && typeof activeModal.opts.onDone === 'function') {
           try { await activeModal.opts.onDone(); } catch(e){ console.error(e); }
         }
       } catch (err) {
-        // Restore state and show error inside modal body or via toast
         s.saveBtn.disabled = false;
         s.saveBtn.textContent = prevText;
         const msg = err && err.message ? err.message : String(err);
@@ -196,39 +288,21 @@ const Modal = (function(){
       }
     });
 
-    // Allow developer to build content
-    const helpers = {
-      createInput(def = {}) {
-        const wrap = document.createElement('div');
-        wrap.className = 'field';
-        const label = document.createElement('label');
-        label.textContent = def.label || '';
-        const input = document.createElement('input');
-        input.name = def.name || '';
-        input.type = def.type || 'text';
-        if (def.value !== undefined) input.value = def.value;
-        if (def.required) input.required = true;
-        wrap.appendChild(label);
-        wrap.appendChild(input);
-        return { wrap, input };
+    // build helpers and call contentBuilder
+    const helpers = createHelpers(s.body);
+    try {
+      if (typeof activeModal.opts.contentBuilder === 'function') {
+        activeModal.opts.contentBuilder(s.body, activeModal.opts.initialData || {}, helpers);
       }
-    };
-
-    // call contentBuilder
-    if (typeof activeModal.opts.contentBuilder === 'function') {
-      try {
-        activeModal.opts.contentBuilder(activeModal.body, activeModal.opts.initialData || {}, helpers);
-      } catch (e) {
-        console.error('Erro em contentBuilder do Modal:', e);
-        showModalError(activeModal.body, 'Erro ao montar conteúdo do modal.');
-      }
+    } catch (e) {
+      console.error('Erro em contentBuilder do Modal:', e);
+      showModalError(s.body, 'Erro ao montar conteúdo do modal.');
     }
 
     // focus trap
     const releaseTrap = trapFocus(s.dialog);
     activeModal.releaseTrap = releaseTrap;
 
-    // expose close for external use
     return { close: close };
   }
 
@@ -266,7 +340,6 @@ const Modal = (function(){
     activeModal = null;
   }
 
-  // API
   return { open, close };
 })();
 
