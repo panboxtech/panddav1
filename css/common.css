@@ -34,9 +34,12 @@ a { color:inherit; text-decoration:none; }
 .brand { font-weight:600; font-size:18px; }
 .layout { display:flex; min-height:calc(100vh - var(--topbar-h)); }
 
-/* Ajuste global: garantir que conteúdo comece abaixo da topbar em desktop */
+/* Ajuste global: garantir que conteúdo comece abaixo da topbar em desktop
+   Usamos padding-top em body container para que sidebar e main não sejam sobrepostos.
+   Em mobile mantemos comportamento com topbar ocupando espaço e sidebar overlay.
+*/
 body > .layout, .layout {
-  padding-top: var(--topbar-h);
+  padding-top: var(--topbar-h); /* garante deslocamento do conteúdo */
 }
 
 /* Sidebar */
@@ -47,6 +50,7 @@ body > .layout, .layout {
 .sidebar.collapsed { width:var(--sidebar-collapsed-w); min-width:var(--sidebar-collapsed-w); }
 
 /* When sidebar is collapsed on desktop hide logo and labels leaving only icons visible */
+/* This makes the collapsed sidebar act as an icon-only rail */
 .sidebar.collapsed .logo { display: none; } /* manter comentário e comportamento importante */
 .sidebar.collapsed .label { display: none; }
 .sidebar.collapsed .menu-item { justify-content: center; padding: 12px 6px; }
@@ -60,76 +64,7 @@ body > .layout, .layout {
 .menu-item { display:flex; gap:10px; align-items:center; padding:10px; border-radius:8px; cursor:pointer; }
 .menu-item .label { white-space:nowrap; }
 .menu-item.selected { background:linear-gradient(90deg,var(--accent), rgba(0,0,0,0.03)); color:white; }
-
-/* Sidebar footer: estilização para exibir nome do usuário e papel */
-/* user-avatar visível sempre; quando colapsado apenas o avatar aparece */
 .sidebar-footer { padding:12px; display:flex; align-items:center; gap:8px; position:relative; cursor:pointer; }
-.user-avatar {
-  width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--accent), rgba(37,99,235,0.6)); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;
-  flex:0 0 36px;
-}
-.sidebar-footer .user-info { display:flex; flex-direction:column; margin-left:6px; }
-.sidebar-footer .user-name { font-weight:600; }
-.sidebar-footer .user-role { font-size:12px; color:var(--muted); }
-
-/* Dropdown (invisível por padrão). Exibido adicionando a classe .open via JS.
-   Mantive aria attributes no HTML para acessibilidade; JS sempre atualiza aria-expanded/aria-hidden.
-*/
-.sidebar-footer-dropdown {
-  display:none;
-  position:absolute;
-  left:12px;
-  bottom:56px;
-  min-width:160px;
-  background:var(--card);
-  border:1px solid rgba(0,0,0,0.06);
-  border-radius:6px;
-  box-shadow:0 6px 18px rgba(0,0,0,0.08);
-  padding:8px 0;
-  z-index:1200; /* acima da sidebar para garantir visibilidade */
-}
-.sidebar-footer.open .sidebar-footer-dropdown { display:block; }
-
-/* Dropdown items */
-.sidebar-footer-dropdown .dropdown-item {
-  display:block;
-  background:none;
-  border:0;
-  text-align:left;
-  width:100%;
-  padding:8px 12px;
-  cursor:pointer;
-  color:var(--text);
-}
-.sidebar-footer-dropdown .dropdown-item:hover { background:rgba(0,0,0,0.03); }
-
-/* Quando a sidebar estiver colapsada esconder textos do footer, mantendo avatar visível */
-.sidebar.collapsed .sidebar-footer .user-info { display: none; }
-.sidebar.collapsed .sidebar-footer { justify-content:center; }
-
-/* Tooltip básico quando colapsado (aparece ao :hover e ao focar) */
-.sidebar.collapsed .sidebar-footer[aria-label]::after {
-  content: attr(aria-label);
-  position: absolute;
-  left: calc(100% + 8px);
-  bottom: 12px;
-  background: #111827;
-  color: #fff;
-  padding:6px 8px;
-  border-radius:6px;
-  font-size:12px;
-  white-space:nowrap;
-  opacity:0;
-  transform: translateY(6px);
-  pointer-events:none;
-  transition: opacity .12s ease, transform .12s ease;
-  z-index:1300;
-}
-.sidebar.collapsed .sidebar-footer:hover[aria-label]::after,
-.sidebar.collapsed .sidebar-footer:focus[aria-label]::after {
-  opacity:1;
-  transform: translateY(0);
-}
 
 /* Main content */
 .main { flex:1; padding:20px; transition: margin-left .2s ease; z-index:800; /* garantir z-index menor que topbar */ }
@@ -147,32 +82,109 @@ body > .layout, .layout {
 .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.35); z-index:1100; }
 .hidden { display:none; }
 
+/* ------------------------
+   ADIÇÕES: estilos para inputs mais arredondados
+   e grupo de incremento (+/-) solicitados no formulário de planos
+   ------------------------ */
+
+/* Inputs e selects mais arredondados e modernos */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+select,
+textarea {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.08);
+  font-size: 14px;
+  color: var(--text);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  transition: box-shadow .12s ease, border-color .12s ease, transform .06s ease;
+}
+
+/* foco */
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 6px 24px rgba(37,99,235,0.06);
+}
+
+/* Ajuste visual dos campos para não parecerem quadrados demais */
+label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+.input-row { display:flex; gap:8px; align-items:center; }
+
+/* Botões de incremento */
+.increment-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+}
+.increment-input {
+  width:86px;
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid rgba(0,0,0,0.08);
+  text-align:center;
+  font-size:14px;
+}
+.increment-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:38px;
+  height:38px;
+}
+.increment-btn:active { transform: translateY(1px); }
+.increment-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* Aviso de limite */
+.limit-warning {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* Responsividade para mobile - aumentar toque e fonte */
+@media (max-width: 480px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  select,
+  textarea {
+    font-size: 16px;
+    padding: 12px;
+  }
+  .increment-btn {
+    font-size: 18px;
+    padding: 10px 12px;
+    min-width:44px;
+    height:44px;
+    border-radius:10px;
+  }
+  .increment-input { width:100px; padding:10px 12px; font-size:16px; }
+  .primary { padding:12px 16px; font-size:16px; }
+  .card { padding:18px; }
+}
+
 /* Responsividade */
 /* Mobile behaviour: sidebar acts as overlay from under the topbar */
 @media (max-width: 900px) {
   .layout { flex-direction:column; }
-  .sidebar {
-    position:fixed;
-    left:0;
-    top:var(--topbar-h);
-    inset:var(--topbar-h) 0 0 0; /* top offset por topbar */
-    height:calc(100vh - var(--topbar-h));
-    transform:translateX(-100%);
-    width:260px;
-  }
+  .sidebar { position:fixed; inset:56px auto auto 0; height:calc(100vh - 56px); transform:translateX(-100%); transition:transform .2s ease; width:260px; }
   .sidebar.expanded { transform:translateX(0); }
   .sidebar.collapsed { transform:translateX(-100%); } /* collapsed não aplica no mobile */
-  .main { margin-top:0; padding:12px; } /* padding-top já aplicado via body > .layout */
-
-  /* Em mobile o footer deve mostrar a user-info normalmente */
-  .sidebar.collapsed .sidebar-footer .user-info { display:block; }
-}
-
-/* Desktop: garantir que topbar sempre sobreponha e que conteúdo não ocupe seu espaço ao rolar.
-   A topbar tem z-index maior; sidebar/main têm z-index menores. Além disso, já adicionamos padding-top
-   global para deslocar o conteúdo. Mantemos transições suaves.
-*/
-@media (min-width: 901px) {
-  /* garantir que layout não use margin-top duplicado quando houver padding-top aplicado */
-  .main { padding-top: 12px; } /* mantém espaçamento interno sem sobrepor a topbar */
+  .main { margin-top:56px; padding:12px; }
 }
