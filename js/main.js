@@ -1,13 +1,11 @@
 /* main.js
    Entrada do app: inicializa mock, autenticação, controle de navegação, tema e sidebar comportamento responsivo.
-   Observações para Supabase:
-     - Inicializar supabase no topo deste arquivo se for usar recursos globais.
-     - Substituir MockAPI.init por carregamento real dos dados.
 
    Alterações aplicadas:
-     - Footer da sidebar agora apresenta user-avatar visível no estado colapsado.
-     - updateSidebarFooter define as iniciais no avatar e o aria-label usado no tooltip.
-     - Mantive comentários importantes e lógica de dropdown / perfil / sair.
+     - Deleguei a renderização do topbar para Topbar (js/topbar.js).
+     - Removi listener redundante para #themeToggle (Topbar já expõe botão e lógica).
+     - Ao mudar autenticação, atualizo Topbar.refreshProfile(user).
+     - Comentários mostram onde integrar o Supabase.
 */
 
 const Main = (function(){
@@ -18,12 +16,18 @@ const Main = (function(){
     // Autenticação
     await Auth.init();
 
-    // Theme: ler do localStorage
+    // Inicializa Topbar (se estiver carregado)
+    if (window.Topbar && typeof window.Topbar.render === 'function') {
+      window.Topbar.render();
+    }
+
+    // Theme: ler do localStorage (Topbar também sincroniza; mantemos como fallback)
     const savedTheme = localStorage.getItem('pandda_theme') || 'light';
     setTheme(savedTheme);
 
-    // Eventos de toggle de tema (topbar)
-    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+    // Nota: Topbar já possui o botão de alternância de tema; não é necessário duplicar o listener.
+    // Se o layout manter o botão #themeToggle no HTML, podemos mantê-lo para compatibilidade,
+    // mas evitar duplicação de comportamento. Mantemos o botão antigo sem adicionar listener aqui.
 
     // Sidebar behavior: usamos o mesmo botão da topbar (mobileMenuBtn)
     const sidebar = document.getElementById('sidebar');
@@ -121,6 +125,7 @@ const Main = (function(){
         },
         onSave: async () => {
           // No protótipo não alteramos realmente o usuário; apenas fecha o modal com feedback.
+          // Com Supabase: aqui você chamaria supabase.from('users').update({...}).eq('id', userId)
           return Promise.resolve();
         }
       });
@@ -173,13 +178,21 @@ const Main = (function(){
     // Atualiza UI com permissões
     if (user) {
       // esconder botão login e apresentar app
-      document.getElementById('loginOverlay').classList.add('hidden');
+      const loginOverlay = document.getElementById('loginOverlay');
+      if (loginOverlay) loginOverlay.classList.add('hidden');
       updateSidebarFooter();
+      // Atualizar topbar com dados do usuário se Topbar estiver carregado
+      if (window.Topbar && typeof window.Topbar.refreshProfile === 'function') {
+        window.Topbar.refreshProfile(user);
+      }
       // Re-render current view to aplicar permissões
       const sel = document.querySelector('.menu-item.selected');
       if (sel) navigateTo(sel.dataset.view);
     } else {
       updateSidebarFooter(); // mostra estado anônimo quando não logado
+      if (window.Topbar && typeof window.Topbar.refreshProfile === 'function') {
+        window.Topbar.refreshProfile(null);
+      }
     }
   }
 
