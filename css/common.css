@@ -297,3 +297,62 @@ label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
 
 /* Se quiser que o footer fique sempre sobre outros conteúdos quando sidebar for overlay */
 .sidebar.expanded { z-index: 1050; }
+
+/* -------------------------
+   Topbar: botão de perfil e menu suspenso
+   ------------------------- */
+
+.profile-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.profile-btn:hover {
+  background: rgba(0,0,0,0.04);
+}
+.profile-btn:focus {
+  outline: 2px solid var(--accent);
+}
+
+.profile-btn .role {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Menu suspenso */
+.profile-menu {
+  position: absolute;
+  background: var(--card);
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  padding: 8px;
+  z-index: 2000;
+  min-width: 160px;
+}
+.profile-menu.hidden {
+  display: none;
+}
+.profile-menu .menu-item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 6px;
+}
+.profile-menu .menu-item:hover {
+  background: rgba(0,0,0,0.04);
+}
