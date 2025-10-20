@@ -79,6 +79,7 @@
         wrap.appendChild(input);
         return { wrap, input, label };
       },
+
       createTextarea(opts = {}) {
         const wrap = createEl('div', { className: 'form-row' });
         const label = createEl('label', { text: opts.label || '' });
@@ -91,6 +92,45 @@
         wrap.appendChild(label);
         wrap.appendChild(textarea);
         return { wrap, textarea, label };
+      },
+
+      createSelect(opts = {}) {
+        // opts: label, name, value, options: [{value, text, selected}]
+        const wrap = createEl('div', { className: 'form-row' });
+        const label = createEl('label', { text: opts.label || '' });
+        const select = createEl('select');
+        if (opts.name) select.name = opts.name;
+        const list = Array.isArray(opts.options) ? opts.options : [];
+        list.forEach(item => {
+          const o = createEl('option', { text: item.text || String(item.value || '') });
+          if (typeof item.value !== 'undefined') o.value = item.value;
+          if (item.selected || (opts.value !== undefined && String(opts.value) === String(item.value))) {
+            o.selected = true;
+          }
+          select.appendChild(o);
+        });
+        if (opts.attrs) {
+          Object.keys(opts.attrs).forEach(k => select.setAttribute(k, opts.attrs[k]));
+        }
+        wrap.appendChild(label);
+        wrap.appendChild(select);
+        return { wrap, select, label };
+      },
+
+      createCheckbox(opts = {}) {
+        // opts: label, name, checked, attrs
+        const wrap = createEl('div', { className: 'form-row' });
+        const label = createEl('label', { text: opts.label || '' });
+        const input = createEl('input');
+        input.type = 'checkbox';
+        if (opts.name) input.name = opts.name;
+        if (opts.checked) input.checked = true;
+        if (opts.attrs) {
+          Object.keys(opts.attrs).forEach(k => input.setAttribute(k, opts.attrs[k]));
+        }
+        wrap.appendChild(label);
+        wrap.appendChild(input);
+        return { wrap, input, label };
       }
     };
   }
