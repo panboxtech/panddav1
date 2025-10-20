@@ -46,7 +46,6 @@ body > .layout, .layout {
    SIDEBAR (estrutura e comportamento)
    ------------------------- */
 
-/* Forçar que a sidebar use um layout em coluna e que o footer empurre para baixo */
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -58,7 +57,6 @@ body > .layout, .layout {
   z-index:900;
 }
 
-/* When sidebar is collapsed on desktop hide logo and labels leaving only icons visible */
 .sidebar.collapsed { width:var(--sidebar-collapsed-w); min-width:var(--sidebar-collapsed-w); }
 .sidebar.collapsed .logo { display: none; }
 .sidebar.collapsed .label { display: none; }
@@ -66,39 +64,35 @@ body > .layout, .layout {
 .sidebar.collapsed .menu-item .icon { display: inline-block; font-size: 18px; }
 .sidebar.collapsed .menu-item .label { display: none; }
 
-/* Sidebar header */
 .sidebar-header { display:flex; justify-content:space-between; align-items:center; padding:12px; }
 .logo { font-weight:700; }
 
-/* Garante que o conteúdo principal da sidebar ocupe o espaço e empurre o footer para baixo */
 .sidebar .menu-list {
   list-style:none;
   padding:8px;
   margin:0;
-  flex: 1 1 auto; /* permite crescer e encolher, ocupando espaço disponível */
+  flex: 1 1 auto;
   overflow: auto;
-  padding-bottom: 12px; /* evitar que último item fique colado no footer */
+  padding-bottom: 12px;
 }
 
 .menu-item { display:flex; gap:10px; align-items:center; padding:10px; border-radius:8px; cursor:pointer; }
 .menu-item .label { white-space:nowrap; }
 .menu-item.selected { background:linear-gradient(90deg,var(--accent), rgba(0,0,0,0.03)); color:white; }
 
-/* Footer sempre visível ao final da coluna */
 .sidebar-footer {
-  margin-top: auto; /* empurra para o final do container da sidebar */
+  margin-top: auto;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px;
   background: transparent;
-  position: relative; /* mantém fluxo normal, permite ajustes internos */
+  position: relative;
   z-index: 10;
   cursor: pointer;
 }
 .sidebar-footer:focus { outline: 2px solid rgba(37,99,235,0.12); border-radius:8px; }
 
-/* Botão/área do avatar — aumentar hit area, centralizar verticalmente e visual consistente */
 .sidebar-footer .user-avatar {
   width: 44px;
   height: 44px;
@@ -114,41 +108,49 @@ body > .layout, .layout {
   box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
 
-/* Texto do usuário no footer */
 .sidebar-footer .user-info { display: flex; flex-direction: column; min-width: 0; }
 .sidebar-footer .user-name { font-size: 14px; font-weight:600; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sidebar-footer .user-role { font-size:12px; color:var(--muted); }
 
-/* If sidebar is overlay ensure it stays above main content when expanded */
 .sidebar.expanded { z-index: 1050; }
 
-/* Main content */
-.main { flex:1; padding:20px; transition: margin-left .2s ease; z-index:800; /* garantir z-index menor que topbar */ }
+.main { flex:1; padding:20px; transition: margin-left .2s ease; z-index:800; }
 .view-root { max-width:1200px; margin:0 auto; }
 
-/* Cards & forms */
 .card { background:var(--card); padding:16px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
 .stack > * + * { margin-top:10px; }
 .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
 .primary { background:var(--accent); color:white; border:0; padding:8px 12px; border-radius:6px; cursor:pointer; }
 .flat-btn { background:none; border:0; color:var(--text); cursor:pointer; padding:6px 8px; }
 
-/* ---------- ALTERAÇÃO AQUI: estilos para botões de AÇÃO (Editar / Excluir) ----------
-   Objetivo: deixar Editar/Excluir com separação visual clara e borda discreta.
-   - .action-btn é a classe sugestiva; aplicamos também um seletor específico que estiliza
-     .flat-btn quando usado dentro de células de tabela (.table td .flat-btn).
-   - Mantemos o .flat-btn genérico sem borda para casos onde não queremos o contorno.
+/* ---------- ALTERAÇÃO: estilos para botões de AÇÃO (Editar / Excluir) ----------
+   - A borda agora tem contraste maior e adapta-se melhor aos temas.
+   - Adiciona um leve box-shadow para destacar em temas claros.
+   - .action-btn deve ser aplicada aos botões de ação nas views para máxima consistência.
 */
 .action-btn {
   background: transparent;
-  border: 1px solid rgba(0,0,0,0.08);
+  border: 1px solid rgba(15,20,30,0.08); /* mais contraste que antes */
   color: var(--text);
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: 6px 9px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
   line-height: 1;
   min-height: 34px;
+  transition: background .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+
+/* Sombra leve para destaque em tema claro */
+@media (prefers-color-scheme: light) {
+  .action-btn { box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+}
+
+/* Em tema escuro ajustar cor e sombra para ser visível */
+[data-theme="dark"] .action-btn {
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  box-shadow: none;
 }
 
 /* separação entre botões de ação na mesma célula */
@@ -158,11 +160,11 @@ body > .layout, .layout {
   margin-left: 8px;
 }
 
-/* deixar btn excluir com destaque vermelho mantendo borda */
+/* destaque para ações perigosas */
 .table td .action-btn.danger,
 .table td .flat-btn.danger {
   color: var(--danger);
-  border-color: rgba(239,68,68,0.12);
+  border-color: rgba(239,68,68,0.16);
   background: rgba(239,68,68,0.03);
 }
 
@@ -174,19 +176,16 @@ body > .layout, .layout {
   font-size: 13px;
 }
 
-/* se a intenção é usar flat-btn como action sem classe extra, este seletor dá espaçamento */
+/* garantir espaçamento caso use apenas flat-btn */
 .table td .flat-btn + .flat-btn { margin-left: 8px; }
 
-/* Overlay / modal basic */
 .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.35); z-index:1100; }
 .hidden { display:none; }
 
 /* ------------------------
    ADIÇÕES: estilos para inputs mais arredondados
-   e grupo de incremento (+/-) solicitados no formulário de planos
    ------------------------ */
 
-/* Inputs e selects mais arredondados e modernos */
 input[type="text"],
 input[type="number"],
 input[type="email"],
@@ -202,7 +201,6 @@ textarea {
   transition: box-shadow .12s ease, border-color .12s ease, transform .06s ease;
 }
 
-/* foco */
 input[type="text"]:focus,
 input[type="number"]:focus,
 input[type="email"]:focus,
@@ -213,11 +211,9 @@ textarea:focus {
   box-shadow: 0 6px 24px rgba(37,99,235,0.06);
 }
 
-/* Ajuste visual dos campos para não parecerem quadrados demais */
 label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
 .input-row { display:flex; gap:8px; align-items:center; }
 
-/* Botões de incremento */
 .increment-group {
   display: inline-flex;
   align-items: center;
@@ -249,14 +245,12 @@ label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
 .increment-btn:active { transform: translateY(1px); }
 .increment-btn:disabled { opacity:0.5; cursor:not-allowed; }
 
-/* Aviso de limite */
 .limit-warning {
   font-size: 12px;
   color: var(--muted);
   margin-top: 6px;
 }
 
-/* Estilo para campo de preço com prefixo R$ */
 .input-currency {
   display:flex;
   align-items:center;
@@ -277,14 +271,11 @@ label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
   padding-right:12px;
 }
 
-/* Erro e obrigatoriedade */
 .field-error { color: var(--danger); font-size:12px; margin-top:6px; }
 .field-required-note { font-size:12px; color:var(--muted); margin-top:6px; }
 
-/* Máscara: garantir monospaced para números e boa largura */
 .currency-input { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; letter-spacing:0.3px; }
 
-/* Responsividade para mobile - aumentar toque e fonte */
 @media (max-width: 480px) {
   input[type="text"],
   input[type="number"],
@@ -306,44 +297,35 @@ label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
   .card { padding:18px; }
 }
 
-/* Mobile: sidebar overlay ocupa do topo (logo abaixo da topbar) até o bottom do viewport */
 @media (max-width: 900px) {
   .layout { flex-direction:column; }
   .sidebar {
     position: fixed;
-    top: var(--topbar-h); /* garante que a sidebar comece abaixo da topbar */
-    bottom: 0;             /* garante que a sidebar não ultrapasse o bottom do viewport */
+    top: var(--topbar-h);
+    bottom: 0;
     height: calc(100vh - var(--topbar-h));
     transform: translateX(-100%);
     transition: transform .2s ease;
-    overflow: hidden; /* menu-list tem overflow auto para scroll */
+    overflow: hidden;
     width: var(--sidebar-w);
   }
 
   .sidebar.expanded { transform: translateX(0); }
 
-  /* Garante que menu-list role tenha scroll independente, preservando footer visível */
   .sidebar .menu-list {
-    max-height: calc(100vh - var(--topbar-h) - 140px); /* reserva espaço para header + footer */
+    max-height: calc(100vh - var(--topbar-h) - 140px);
     overflow-y: auto;
   }
 
-  /* Aumentar hit área do footer para toque */
   .sidebar-footer { padding: 14px; }
   .sidebar-footer .user-avatar { width:48px; height:48px; min-width:48px; min-height:48px; border-radius:12px; }
 }
 
-/* opção defensiva: se a sidebar tiver conteúdo muito curto, garantir footer não sobe demais */
 .sidebar .menu-list:empty + .sidebar-footer {
   margin-top: auto;
 }
 
-/* Se quiser que o footer fique sempre sobre outros conteúdos quando sidebar for overlay */
 .sidebar.expanded { z-index: 1050; }
-
-/* -------------------------
-   Topbar: botão de perfil e menu suspenso
-   ------------------------- */
 
 .profile-btn {
   background: none;
@@ -365,12 +347,6 @@ label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
   outline: 2px solid var(--accent);
 }
 
-.profile-btn .role {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/* Menu suspenso */
 .profile-menu {
   position: absolute;
   background: var(--card);
