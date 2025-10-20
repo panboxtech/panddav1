@@ -1,7 +1,3 @@
-/* views/servers.js
-   Implementação básica da view de servidores.
-   Permissões: only master pode excluir.
-*/
 (function(){
   const root = document.getElementById('view-root');
 
@@ -21,7 +17,7 @@
       const div = document.createElement('div'); div.className='client-card';
       const left = document.createElement('div'); left.innerHTML = `<strong>${s.nome}</strong><div class="small-badge">${s.alias}</div>`;
       const right = document.createElement('div');
-      const btnEdit = document.createElement('button'); btnEdit.className='flat-btn'; btnEdit.textContent='Editar';
+      const btnEdit = document.createElement('button'); btnEdit.className='action-btn'; btnEdit.textContent='Editar';
       btnEdit.addEventListener('click', ()=> {
         Modal.open({
           title: 'Editar servidor',
@@ -34,8 +30,7 @@
           onSave: async ()=> {
             const container = document.querySelector('#modals-root .modal-body');
             const patch = container._collectData();
-            await MockAPI.createServer({ id: s.id, nome: patch.nome, alias: patch.alias }); // Mock replace logic: createServer appends, but for prototype OK
-            // In production: supabase.from('servers').update(patch).eq('id', s.id)
+            await MockAPI.createServer({ id: s.id, nome: patch.nome, alias: patch.alias });
           },
           onDone: async ()=> render()
         });
@@ -44,10 +39,9 @@
       right.appendChild(btnEdit);
       const user = Auth.getUser();
       if (user && user.role === 'master') {
-        const btnDel = document.createElement('button'); btnDel.className='flat-btn'; btnDel.style.color='var(--danger)'; btnDel.textContent='Excluir';
+        const btnDel = document.createElement('button'); btnDel.className='action-btn danger'; btnDel.style.color='var(--danger)'; btnDel.textContent='Excluir';
         btnDel.addEventListener('click', async ()=> {
           if (!confirm('Excluir servidor?')) return;
-          // Mock: remover do MockDB
           MockDB.servers = MockDB.servers.filter(x=>x.id !== s.id);
           await render();
         });
