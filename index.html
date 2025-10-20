@@ -5,14 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pandda - Painel</title>
   <link rel="stylesheet" href="css/common.css" />
-  <!-- outros head scripts/styles -->
 </head>
 <body>
   <header class="topbar">
     <div class="brand">Pandda</div>
     <div class="top-actions" style="display:flex;align-items:center;gap:12px;">
-      <button id="themeToggle" class="icon-btn" aria-label="Alternar tema">🌓</button>
       <button id="mobileMenuBtn" class="icon-btn" aria-label="Abrir menu">☰</button>
+      <button id="themeToggle" class="icon-btn" aria-label="Alternar tema">🌓</button>
       <button class="profile-btn" aria-haspopup="true" aria-expanded="false"><strong>Usuário</strong></button>
     </div>
   </header>
@@ -23,12 +22,12 @@
         <div class="logo">Pandda</div>
       </div>
 
-      <ul class="menu-list">
-        <li class="menu-item selected"><span class="icon">🏠</span><span class="label">Dashboard</span></li>
-        <li class="menu-item"><span class="icon">👥</span><span class="label">Clientes</span></li>
-        <li class="menu-item"><span class="icon">📦</span><span class="label">Planos</span></li>
-        <li class="menu-item"><span class="icon">🖥️</span><span class="label">Servidores</span></li>
-        <li class="menu-item"><span class="icon">📱</span><span class="label">Apps</span></li>
+      <ul class="menu-list" id="app-menu">
+        <li class="menu-item" data-view="dashboard"><span class="icon">🏠</span><span class="label">Dashboard</span></li>
+        <li class="menu-item" data-view="clients"><span class="icon">👥</span><span class="label">Clientes</span></li>
+        <li class="menu-item" data-view="plans"><span class="icon">📦</span><span class="label">Planos</span></li>
+        <li class="menu-item" data-view="servers"><span class="icon">🖥️</span><span class="label">Servidores</span></li>
+        <li class="menu-item" data-view="apps"><span class="icon">📱</span><span class="label">Apps</span></li>
       </ul>
 
       <div class="sidebar-footer">
@@ -45,12 +44,16 @@
     </main>
   </div>
 
-  <!-- modals root -->
   <div id="modals-root" aria-live="polite"></div>
 
   <script src="js/mockData.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/topbar.js"></script>
   <script src="js/sidebar-toggle.js"></script>
+  <script src="js/views/clients.js"></script>
+  <script src="js/views/plans.js"></script>
+  <script src="js/views/servers.js"></script>
+  <script src="js/views/apps.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
