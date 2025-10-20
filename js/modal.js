@@ -1,10 +1,6 @@
 // js/modal.js
 // Modal simples, acessível e independente de bibliotecas.
-// Uso:
-// Modal.open({ title, initialData, contentBuilder(container, data, helpers), onSave, onDone })
-// contentBuilder recebe container (elemento), data (initialData) e um objeto helpers com createInput/createTextarea
-// onSave deve retornar Promise ou lançar erro para bloquear o fechamento.
-// onDone é chamado após salvar com sucesso.
+// API: Modal.open({ title, initialData, contentBuilder(container,data,helpers), onSave, onDone })
 (function () {
   const ROOT_ID = 'modals-root';
 
@@ -53,7 +49,7 @@
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        closeModal(modalEl);
+        closeModal(modalObj);
       }
     }
     document.addEventListener('keydown', handleKey);
@@ -64,16 +60,6 @@
     const prev = { overflow: document.documentElement.style.overflow || '' };
     document.documentElement.style.overflow = 'hidden';
     return () => { document.documentElement.style.overflow = prev.overflow; };
-  }
-
-  function closeModal(modalObj) {
-    if (!modalObj || !modalObj.root) return;
-    const { backdrop, cleanup } = modalObj;
-    backdrop.classList.add('hidden');
-    setTimeout(() => {
-      if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
-      if (cleanup) cleanup();
-    }, 220);
   }
 
   function createInputHelper() {
@@ -131,8 +117,6 @@
     header.appendChild(h);
 
     const closeBtn = createEl('button', { className: 'icon-btn', text: '✕', attrs: { 'aria-label': 'Fechar' } });
-    closeBtn.addEventListener('click', () => closeModal(modalObj));
-    header.appendChild(closeBtn);
 
     const body = createEl('div', { className: 'modal-body' });
     body.style.marginTop = '12px';
@@ -148,13 +132,6 @@
     dialog.appendChild(footer);
     backdrop.appendChild(dialog);
 
-    // click outside closes on mobile/overlay mode
-    backdrop.addEventListener('click', (ev) => {
-      if (ev.target === backdrop) closeModal(modalObj);
-    });
-
-    root.appendChild(backdrop);
-
     const cleanupFns = [];
     let restoreScroll = null;
     let untrap = null;
@@ -165,24 +142,39 @@
       body,
       footer,
       header,
-      cleanup() {
-        cleanupFns.forEach(fn => { try { fn(); } catch (e) {} });
-        if (untrap) untrap();
-        if (restoreScroll) restoreScroll();
-      },
-      registerCleanup(fn) { cleanupFns.push(fn); }
+      registerCleanup(fn) { cleanupFns.push(fn); },
+      cleanup() { cleanupFns.forEach(fn => { try { fn(); } catch (e) {} }); if (untrap) untrap(); if (restoreScroll) restoreScroll(); }
     };
 
-    // disable scroll and trap focus
+    closeBtn.addEventListener('click', () => {
+      closeModal(modalObj);
+    });
+    header.appendChild(closeBtn);
+
+    backdrop.addEventListener('click', (ev) => {
+      if (ev.target === backdrop) closeModal(modalObj);
+    });
+
+    root.appendChild(backdrop);
+
     restoreScroll = disableScroll();
     untrap = trapFocus(dialog);
-    // focus first focusable later
     setTimeout(() => {
       const f = dialog.querySelector(focusableSelector());
       if (f) f.focus();
     }, 50);
 
     return modalObj;
+  }
+
+  function closeModal(modalObj) {
+    if (!modalObj || !modalObj.backdrop) return;
+    const { backdrop } = modalObj;
+    backdrop.classList.add('hidden');
+    setTimeout(() => {
+      if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+      if (typeof modalObj.cleanup === 'function') modalObj.cleanup();
+    }, 220);
   }
 
   // Modal API
@@ -193,7 +185,6 @@
       const modalObj = buildModalShell(title);
       const helpers = createInputHelper();
 
-      // build content via callback
       if (typeof opts.contentBuilder === 'function') {
         try {
           opts.contentBuilder(modalObj.body, data, helpers);
@@ -204,7 +195,6 @@
         }
       }
 
-      // Footer buttons: Cancel and Save
       const btnCancel = createEl('button', { className: 'action-btn', text: 'Cancelar' });
       const btnSave = createEl('button', { className: 'primary', text: 'Salvar' });
 
@@ -213,23 +203,18 @@
       });
 
       btnSave.addEventListener('click', async () => {
-        // allow content to expose _collectData on modal body
-        const collect = modalObj.body._collectData;
         try {
           if (typeof opts.onSave === 'function') {
-            // call onSave which should perform validations and persist data
-            const maybePromise = opts.onSave();
-            await Promise.resolve(maybePromise);
-          } else if (typeof collect === 'function') {
-            // fallback: try collect + noop
-            collect();
+            await Promise.resolve(opts.onSave());
+          } else {
+            const collect = modalObj.body._collectData;
+            if (typeof collect === 'function') collect();
           }
           closeModal(modalObj);
           if (typeof opts.onDone === 'function') {
             try { opts.onDone(); } catch (e) {}
           }
         } catch (err) {
-          // show error inline
           let errBox = modalObj.body.querySelector('.modal-error');
           if (!errBox) {
             errBox = createEl('div', { className: 'modal-error' });
@@ -244,7 +229,6 @@
       modalObj.footer.appendChild(btnCancel);
       modalObj.footer.appendChild(btnSave);
 
-      // expose close and helpers
       modalObj.close = () => closeModal(modalObj);
       modalObj.helpers = helpers;
 
@@ -257,6 +241,5 @@
     }
   };
 
-  // export
   window.Modal = Modal;
 })();
