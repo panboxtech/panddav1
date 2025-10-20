@@ -232,7 +232,7 @@ body > .layout, .layout { padding-top: var(--topbar-h); }
    ------------------------- */
 
 .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.35); z-index:1100; }
-.overlay .modal-dialog { /* garantir dialog sobre outros elementos */ z-index:1150; }
+.overlay .modal-dialog { z-index:1150; }
 .hidden { display:none; }
 
 /* modal-card (aplicado pelo modal.js via class "card modal-dialog") */
@@ -290,6 +290,64 @@ body > .layout, .layout { padding-top: var(--topbar-h); }
    INPUTS, FORMS E HELPERS
    ------------------------- */
 
+/* Botões de incremento: layout com controles no lado direito */
+.increment-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  justify-content: space-between;
+  width: 100%;
+}
+.increment-group.right-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.increment-input {
+  flex: 1 1 auto;
+  min-width: 86px;
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid rgba(0,0,0,0.08);
+  text-align:center;
+  font-size:14px;
+}
+
+/* container que agrupa os botões + e - alinhados à direita */
+.increment-controls {
+  display: inline-flex;
+  flex-direction: row;
+  gap: 8px;
+  margin-left: 8px;
+}
+/* botões visual (mantém aparência existente) */
+.increment-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:38px;
+  height:38px;
+}
+.increment-btn:active { transform: translateY(1px); }
+.increment-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* pequenas melhorias visuais para o label com ícone */
+label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+label svg, label .icon-emoji { margin-right:6px; vertical-align:middle; }
+
+/* pequena nota para observações */
+.small-note { font-size:13px; color:var(--muted); margin-top:6px; }
+
+/* Inputs e selects */
 input[type="text"],
 input[type="number"],
 input[type="email"],
@@ -316,14 +374,8 @@ textarea:focus {
 label { display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
 .input-row { display:flex; gap:8px; align-items:center; }
 
-/* increment group */
-.increment-group { display: inline-flex; align-items: center; gap: 8px; background: transparent; }
-.increment-input { width:86px; padding:8px 10px; border-radius:8px; border:1px solid rgba(0,0,0,0.08); text-align:center; font-size:14px; }
-.increment-btn { background: var(--accent); color: white; border: none; padding: 8px 10px; border-radius: 8px; font-size: 16px; cursor: pointer; display:inline-flex; align-items:center; justify-content:center; min-width:38px; height:38px; }
-.increment-btn:active { transform: translateY(1px); }
-.increment-btn:disabled { opacity:0.5; cursor:not-allowed; }
-
-.limit-warning { font-size: 12px; color: var(--muted); margin-top: 6px; }
+/* increment group helpers */
+.increment-group { display: inline-flex; align-items: center; gap: 8px; }
 
 /* currency input */
 .input-currency { display:flex; align-items:center; gap:8px; }
