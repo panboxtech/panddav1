@@ -1,141 +1,105 @@
-/* main.js
-   Entrada do app: inicializa mock, autenticação, controle de navegação, tema e sidebar.
-   Alterações principais nesta versão:
-     - Remove referências a #logoutBtn (botão removido do HTML).
-     - Remove referências e lógica do dropdown da sidebar footer (myProfileBtn, signOutBtn, sidebar-footer-dropdown).
-     - Topbar.render() gerencia mobileMenuBtn, tema e menu de perfil.
-     - Mantém locais exatos onde integrar Supabase.
-*/
+// js/main.js
+// Inicialização da aplicação: MockAPI, Topbar e roteamento simples via menu lateral.
 
-const Main = (function(){
-  async function init() {
-    // Inicializa MockAPI
-    MockAPI.init();
+(function () {
+  const VIEW_ROOT_ID = 'view-root';
+  const MENU_ID = 'app-menu';
 
-    // Autenticação (adapter atual usa localStorage). Ao migrar para Supabase:
-    // - inicialize supabase client antes;
-    // - use supabase.auth.onAuthStateChange para chamar Main.onAuthChanged.
-    await Auth.init();
+  function setActiveMenuItem(selectedEl) {
+    const menu = document.getElementById(MENU_ID);
+    if (!menu) return;
+    Array.from(menu.querySelectorAll('.menu-item')).forEach(li => li.classList.remove('selected'));
+    if (selectedEl) selectedEl.classList.add('selected');
+  }
 
-    // Inicializa Topbar (renderiza marca, botões, e conecta handler do mobile menu)
-    if (window.Topbar && typeof window.Topbar.render === 'function') {
-      window.Topbar.render();
+  function loadViewByName(name) {
+    const root = document.getElementById(VIEW_ROOT_ID);
+    if (!root) return;
+    root.innerHTML = ''; // clear
+
+    try {
+      if (name === 'dashboard') {
+        const h = document.createElement('div');
+        h.textContent = 'Dashboard (em desenvolvimento)';
+        root.appendChild(h);
+        return;
+      }
+      if (name === 'clients' && window.ClientsView && typeof ClientsView.render === 'function') {
+        ClientsView.render();
+        return;
+      }
+      if (name === 'plans' && window.PlansView && typeof PlansView.render === 'function') {
+        PlansView.render();
+        return;
+      }
+      if (name === 'servers' && window.ServersView && typeof ServersView.render === 'function') {
+        ServersView.render();
+        return;
+      }
+      if (name === 'apps' && window.AppsView && typeof AppsView.render === 'function') {
+        AppsView.render();
+        return;
+      }
+      // fallback
+      const p = document.createElement('div');
+      p.textContent = 'View não encontrada: ' + name;
+      root.appendChild(p);
+    } catch (err) {
+      console.error('Erro ao carregar view', name, err);
+      const errEl = document.createElement('div');
+      errEl.textContent = 'Erro ao carregar a view. Veja o console.';
+      root.appendChild(errEl);
     }
+  }
 
-    // Theme: ler do localStorage como fallback (Topbar também sincroniza)
-    const savedTheme = localStorage.getItem('pandda_theme') || 'light';
-    setTheme(savedTheme);
-
-    // Sidebar elements
-    const sidebar = document.getElementById('sidebar');
-
-    // Footer elements: agora simplificados (apenas avatar)
-    const sidebarFooter = document.getElementById('sidebarFooter');
-    const avatarEl = sidebarFooter ? sidebarFooter.querySelector('.user-avatar') : null;
-
-    // Ao redimensionar, garantir consistência visual
-    window.addEventListener('resize', () => {
-      if (window.matchMedia('(max-width:900px)').matches) {
-        sidebar.classList.remove('collapsed');
-      } else {
+  function attachMenuHandlers() {
+    const menu = document.getElementById(MENU_ID);
+    if (!menu) return;
+    menu.addEventListener('click', function (ev) {
+      const li = ev.target.closest('.menu-item');
+      if (!li) return;
+      const view = li.getAttribute('data-view');
+      setActiveMenuItem(li);
+      loadViewByName(view);
+      // close sidebar on mobile for better UX
+      const sidebar = document.getElementById('sidebar');
+      if (window.matchMedia('(max-width:900px)').matches && sidebar) {
         sidebar.classList.remove('expanded');
       }
-      // fechar dropdown não necessário porque o dropdown foi removido
     });
-
-    // Atualiza footer da sidebar com dados do usuário atual (iniciais no avatar)
-    updateSidebarFooter();
-
-    // Menu lateral navigation
-    document.getElementById('menuList').addEventListener('click', (e)=> {
-      const li = e.target.closest('.menu-item');
-      if (!li) return;
-      document.querySelectorAll('.menu-item').forEach(i=>i.classList.remove('selected'));
-      li.classList.add('selected');
-      const view = li.dataset.view;
-      navigateTo(view);
-      // Auto close mobile menu: Topbar gerencia overlay; garantimos aqui também
-      const sidebarEl = document.getElementById('sidebar');
-      if (window.matchMedia('(max-width:900px)').matches) {
-        sidebarEl.classList.remove('expanded');
-      }
-    });
-
-    // Expose onAuthChanged for Auth
-    window.Main = { onAuthChanged };
-
-    // Rota inicial
-    navigateTo('dashboard');
   }
 
-  async function onAuthChanged(user) {
-    // Atualiza UI com permissões e sincroniza topbar
-    if (user) {
-      const loginOverlay = document.getElementById('loginOverlay');
-      if (loginOverlay) loginOverlay.classList.add('hidden');
-      updateSidebarFooter();
-      if (window.Topbar && typeof window.Topbar.refreshProfile === 'function') {
-        window.Topbar.refreshProfile(user);
-      }
-      const sel = document.querySelector('.menu-item.selected');
-      if (sel) navigateTo(sel.dataset.view);
+  function ensureMockAPI() {
+    if (window.MockAPI && typeof window.MockAPI.init === 'function') {
+      try { MockAPI.init(); } catch (e) { /* ignore */ }
     } else {
-      updateSidebarFooter();
-      if (window.Topbar && typeof window.Topbar.refreshProfile === 'function') {
-        window.Topbar.refreshProfile(null);
-      }
+      console.warn('MockAPI não encontrado');
     }
   }
 
-  function updateSidebarFooter() {
-    const footer = document.getElementById('sidebarFooter');
-    if (!footer) return;
-    const avatarEl = footer.querySelector('.user-avatar');
-    const user = Auth.getUser();
-    if (user) {
-      const displayName = user.email || user.id || 'Usuário';
-      const initials = getInitials(displayName);
-      if (avatarEl) avatarEl.textContent = initials;
-      const tooltipText = `${displayName}`;
-      footer.setAttribute('aria-label', tooltipText);
-    } else {
-      if (avatarEl) avatarEl.textContent = 'AN';
-      footer.setAttribute('aria-label', 'Anônimo');
+  function init() {
+    ensureMockAPI();
+
+    // init Topbar if available
+    if (window.Topbar && typeof Topbar.init === 'function') {
+      try { Topbar.init(); } catch (e) { console.error('Topbar init falhou', e); }
+    }
+
+    attachMenuHandlers();
+
+    // load default view (plans)
+    const defaultItem = document.querySelector(`#${MENU_ID} .menu-item[data-view="plans"]`) || document.querySelector(`#${MENU_ID} .menu-item`);
+    if (defaultItem) {
+      setActiveMenuItem(defaultItem);
+      loadViewByName(defaultItem.getAttribute('data-view') || 'dashboard');
     }
   }
 
-  function getInitials(text) {
-    if (!text) return 'U';
-    const beforeAt = text.split('@')[0];
-    const parts = beforeAt.split(/[.\s-_]+/).filter(Boolean);
-    if (parts.length === 1) return parts[0].slice(0,2).toUpperCase();
-    return (parts[0][0] + (parts[1][0] || '')).toUpperCase();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    setTimeout(init, 0);
   }
 
-  function setTheme(t) {
-    const root = document.documentElement;
-    if (t === 'dark') root.setAttribute('data-theme','dark');
-    else root.removeAttribute('data-theme');
-    localStorage.setItem('pandda_theme', t);
-  }
-
-  async function navigateTo(view) {
-    if (view === 'dashboard') {
-      const root = document.getElementById('view-root'); root.innerHTML = '<div class="card"><h2>Dashboard</h2><p>Visão geral do sistema (protótipo).</p></div>';
-    } else if (view === 'clients') {
-      await window.ClientsView.render();
-    } else if (view === 'servers') {
-      await window.ServersView.render();
-    } else if (view === 'apps') {
-      await window.AppsView.render();
-    } else if (view === 'plans') {
-      await window.PlansView.render();
-    } else {
-      document.getElementById('view-root').innerHTML = '<div class="card"><p>View não implementada</p></div>';
-    }
-  }
-
-  return { init, onAuthChanged };
+  window.AppInit = { init, loadViewByName };
 })();
-
-document.addEventListener('DOMContentLoaded', () => { Main.init(); });
