@@ -1,41 +1,115 @@
-(function(){
+(function () {
   const root = document.getElementById('view-root');
 
-  async function render(){
+  function createEl(tag, opts = {}) {
+    const el = document.createElement(tag);
+    if (opts.className) el.className = opts.className;
+    if (typeof opts.text !== 'undefined') el.textContent = opts.text;
+    if (opts.attrs) {
+      Object.keys(opts.attrs).forEach(k => el.setAttribute(k, opts.attrs[k]));
+    }
+    return el;
+  }
+
+  async function render() {
     root.innerHTML = '';
-    const header = document.createElement('div'); header.style.display='flex'; header.style.justifyContent='space-between'; header.style.alignItems='center';
-    const title = document.createElement('h2'); title.textContent = 'Planos';
-    const add = document.createElement('button'); add.className='primary'; add.textContent='Novo plano';
-    header.appendChild(title); header.appendChild(add); root.appendChild(header);
-    const list = document.createElement('div'); list.className='card'; root.appendChild(list);
+    const header = createEl('div', { className: 'd-flex', text: '' });
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+
+    const title = createEl('h2', { text: 'Planos' });
+    const add = createEl('button', { className: 'primary', text: 'Novo plano' });
+
+    header.appendChild(title);
+    header.appendChild(add);
+    root.appendChild(header);
+
+    const listCard = createEl('div', { className: 'card' });
+    root.appendChild(listCard);
 
     const plans = await MockAPI.getPlans();
-    plans.forEach(p=>{
-      const div = document.createElement('div'); div.className = 'client-card';
-      const left = document.createElement('div');
-      // mostrar observações se existir
-      left.innerHTML = `<strong>${p.nome}</strong><div class="small-badge">${p.telas} telas • ${p.validadeEmMeses} meses • R$ ${Number(p.preco).toFixed(2)}</div>${p.observacoes ? `<div class="small-note">${escapeHtml(p.observacoes)}</div>` : ''}`;
-      const right = document.createElement('div');
-      const btnEdit = document.createElement('button'); btnEdit.className='action-btn'; btnEdit.textContent='Editar';
-      btnEdit.addEventListener('click', ()=> {
-        openPlanModal('Editar plano', p);
-      });
-      right.appendChild(btnEdit);
-      const user = Auth.getUser();
-      if (user && user.role === 'master') {
-        const btnDel = document.createElement('button'); btnDel.className='action-btn danger'; btnDel.textContent='Excluir';
-        btnDel.addEventListener('click', ()=> {
-          if (!confirm('Excluir plano?')) return;
-          MockDB.plans = MockDB.plans.filter(x=>x.id !== p.id);
-          render();
-          showToast('Plano excluído', 'info');
-        });
-        right.appendChild(btnDel);
-      }
-      div.appendChild(left); div.appendChild(right); list.appendChild(div);
+    const list = createEl('div', { className: 'plan-list' });
+
+    plans.forEach(p => {
+      const card = createPlanCard(p);
+      list.appendChild(card);
     });
 
-    add.addEventListener('click', ()=> openPlanModal('Novo plano', null));
+    listCard.appendChild(list);
+
+    add.addEventListener('click', () => openPlanModal('Novo plano', null));
+  }
+
+  function createPlanCard(plan) {
+    const card = createEl('div', { className: 'plan-card' });
+
+    // left column: title, meta, note
+    const left = createEl('div', { className: 'plan-left' });
+    left.style.flex = '1 1 auto';
+    left.style.minWidth = '0';
+
+    const title = createEl('div', { className: 'plan-title', text: truncateString(plan.nome || '', 45) });
+    const meta = createEl('div', { className: 'plan-meta' });
+
+    const telasItem = createEl('div', { className: 'meta-item' });
+    const telasIcon = createEl('span', { className: 'label-icon', text: '' });
+    telasIcon.textContent = '📺';
+    const telasText = createEl('span', { text: `${plan.telas} telas` });
+    telasItem.appendChild(telasIcon);
+    telasItem.appendChild(telasText);
+
+    const mesesItem = createEl('div', { className: 'meta-item' });
+    const mesesIcon = createEl('span', { className: 'label-icon', text: '' });
+    mesesIcon.textContent = '📅';
+    const mesesText = createEl('span', { text: `${plan.validadeEmMeses} meses` });
+    mesesItem.appendChild(mesesIcon);
+    mesesItem.appendChild(mesesText);
+
+    const precoItem = createEl('div', { className: 'meta-item' });
+    const precoText = createEl('span', { text: `R$ ${Number(plan.preco).toFixed(2)}` });
+    precoItem.appendChild(precoText);
+
+    meta.appendChild(telasItem);
+    meta.appendChild(mesesItem);
+    meta.appendChild(precoItem);
+
+    const note = createEl('div', { className: 'plan-note', text: truncateString(plan.observacoes || '', 45) });
+
+    left.appendChild(title);
+    left.appendChild(meta);
+    if (plan.observacoes && plan.observacoes.trim().length > 0) left.appendChild(note);
+
+    // right column: actions
+    const right = createEl('div', { className: 'plan-actions' });
+
+    const editBtn = createEl('button', { className: 'action-btn', text: 'Editar' });
+    editBtn.addEventListener('click', () => openPlanModal('Editar plano', plan));
+
+    right.appendChild(editBtn);
+
+    const user = Auth.getUser();
+    if (user && user.role === 'master') {
+      const delBtn = createEl('button', { className: 'action-btn danger', text: 'Excluir' });
+      delBtn.addEventListener('click', () => {
+        if (!confirm('Excluir plano?')) return;
+        MockDB.plans = MockDB.plans.filter(x => x.id !== plan.id);
+        render();
+        showToast('Plano excluído', 'info');
+      });
+      right.appendChild(delBtn);
+    }
+
+    card.appendChild(left);
+    card.appendChild(right);
+
+    return card;
+  }
+
+  function truncateString(s, max) {
+    if (typeof s !== 'string') return '';
+    if (s.length <= max) return s;
+    return s.slice(0, max - 1).trim() + '…';
   }
 
   function openPlanModal(title, plan) {
@@ -44,79 +118,94 @@
       initialData: plan || {},
       contentBuilder(container, data, h) {
         // Nome
-        const nome = h.createInput({label:'Nome', name:'nome', value: data.nome || '', required:true});
+        const nome = h.createInput({ label: 'Nome', name: 'nome', value: data.nome || '', required: true });
 
-        // Telas (increment group) com ícone no label
-        const telasLabel = document.createElement('label'); telasLabel.innerHTML = '📺 Telas';
-        const telasGroup = document.createElement('div'); telasGroup.className = 'increment-group right-controls';
-        const telasInput = document.createElement('input'); telasInput.type='number'; telasInput.name='telas'; telasInput.className='increment-input';
+        // Telas
+        const telasLabel = createEl('label');
+        const telasLabelIcon = createEl('span', { className: 'label-icon' });
+        telasLabelIcon.textContent = '📺 Telas';
+        telasLabel.appendChild(telasLabelIcon);
+
+        const telasGroup = createEl('div', { className: 'increment-group right-controls' });
+        const telasInput = createEl('input', { attrs: { type: 'number', name: 'telas' } });
+        telasInput.className = 'increment-input';
         telasInput.value = (typeof data.telas !== 'undefined' && data.telas !== null) ? data.telas : 1;
-        const telasButtons = document.createElement('div'); telasButtons.className = 'increment-controls';
-        const telasMinus = document.createElement('button'); telasMinus.type='button'; telasMinus.className='increment-btn'; telasMinus.textContent='−';
-        const telasPlus = document.createElement('button'); telasPlus.type='button'; telasPlus.className='increment-btn'; telasPlus.textContent='+';
-        telasButtons.appendChild(telasMinus); telasButtons.appendChild(telasPlus);
-        telasGroup.appendChild(telasInput); telasGroup.appendChild(telasButtons);
-        const telasWarning = document.createElement('div'); telasWarning.className='limit-warning';
 
-        // Validade em meses com ícone
-        const validadeLabel = document.createElement('label'); validadeLabel.innerHTML = '📅 Validade em meses';
-        const validadeGroup = document.createElement('div'); validadeGroup.className = 'increment-group right-controls';
-        const validadeInput = document.createElement('input'); validadeInput.type='number'; validadeInput.name='validadeEmMeses'; validadeInput.className='increment-input';
+        const telasControls = createEl('div', { className: 'increment-controls' });
+        const telasMinus = createEl('button', { className: 'increment-btn', text: '−' });
+        const telasPlus = createEl('button', { className: 'increment-btn', text: '+' });
+        telasControls.appendChild(telasMinus);
+        telasControls.appendChild(telasPlus);
+
+        telasGroup.appendChild(telasInput);
+        telasGroup.appendChild(telasControls);
+
+        const telasWarning = createEl('div', { className: 'limit-warning', text: '' });
+        telasWarning.style.fontSize = '13px';
+        telasWarning.style.color = 'var(--muted)';
+
+        // Validade
+        const validadeLabel = createEl('label');
+        const validadeLabelIcon = createEl('span', { className: 'label-icon' });
+        validadeLabelIcon.textContent = '📅 Validade em meses';
+        validadeLabel.appendChild(validadeLabelIcon);
+
+        const validadeGroup = createEl('div', { className: 'increment-group right-controls' });
+        const validadeInput = createEl('input', { attrs: { type: 'number', name: 'validadeEmMeses' } });
+        validadeInput.className = 'increment-input';
         validadeInput.value = (typeof data.validadeEmMeses !== 'undefined' && data.validadeEmMeses !== null) ? data.validadeEmMeses : 1;
-        const validadeButtons = document.createElement('div'); validadeButtons.className = 'increment-controls';
-        const validadeMinus = document.createElement('button'); validadeMinus.type='button'; validadeMinus.className='increment-btn'; validadeMinus.textContent='−';
-        const validadePlus = document.createElement('button'); validadePlus.type='button'; validadePlus.className='increment-btn'; validadePlus.textContent='+';
-        validadeButtons.appendChild(validadeMinus); validadeButtons.appendChild(validadePlus);
-        validadeGroup.appendChild(validadeInput); validadeGroup.appendChild(validadeButtons);
+        const validadeControls = createEl('div', { className: 'increment-controls' });
+        const validadeMinus = createEl('button', { className: 'increment-btn', text: '−' });
+        const validadePlus = createEl('button', { className: 'increment-btn', text: '+' });
+        validadeControls.appendChild(validadeMinus);
+        validadeControls.appendChild(validadePlus);
+        validadeGroup.appendChild(validadeInput);
+        validadeGroup.appendChild(validadeControls);
 
-        // Preço (campo com prefixo R$)
-        const precoLabel = document.createElement('label'); precoLabel.textContent = 'Preço (R$)';
-        const precoWrap = document.createElement('div'); precoWrap.className = 'input-currency';
-        const prefix = document.createElement('div'); prefix.className='currency-prefix'; prefix.textContent = 'R$';
-        const precoInput = document.createElement('input');
-        precoInput.type = 'text';
-        precoInput.name = 'preco';
-        precoInput.id = 'currencyInput';
-        precoInput.value = (typeof data.preco !== 'undefined' && data.preco !== null && data.preco !== '') ? formatNumberToPtBR(Number(data.preco)) : '';
-        precoInput.placeholder = '0,00';
-        precoInput.setAttribute('inputmode','decimal');
-        precoInput.autocomplete = 'off';
+        // Preço
+        const precoLabel = createEl('label', { text: 'Preço (R$)' });
+        const precoWrap = createEl('div', { className: 'input-currency' });
+        const prefix = createEl('div', { className: 'currency-prefix', text: 'R$' });
+        const precoInput = createEl('input', { attrs: { type: 'text', name: 'preco', inputmode: 'decimal', autocomplete: 'off' } });
         precoInput.className = 'currency-input';
-        precoWrap.appendChild(prefix); precoWrap.appendChild(precoInput);
+        precoInput.value = (typeof data.preco !== 'undefined' && data.preco !== null && data.preco !== '') ? formatNumberToPtBR(Number(data.preco)) : '';
+        precoWrap.appendChild(prefix);
+        precoWrap.appendChild(precoInput);
 
-        let precoTouched = false;
-        precoInput.addEventListener('focus', () => { precoTouched = true; });
-        precoInput.addEventListener('click', () => { precoTouched = true; });
+        // Observações (opcional)
+        const obsWrap = h.createTextarea({ label: 'Observações (opcional)', name: 'observacoes', value: data.observacoes || '', attrs: { rows: 4, placeholder: 'Observações sobre o plano (opcional)' } });
 
-        attachCurrencyMask(precoInput);
-
-        // Observações (opcional) - textarea
-        const obsWrap = h.createTextarea({label:'Observações (opcional)', name:'observacoes', value: data.observacoes || '', attrs: { rows: 4, placeholder: 'Observações sobre o plano (opcional)'}});
-
-        // Montagem no container
-        const wrap = document.createElement('div'); wrap.className='stack';
+        // Build form
+        const wrap = createEl('div', { className: 'stack' });
         wrap.appendChild(nome.wrap);
 
-        const telasWrap = document.createElement('div'); telasWrap.appendChild(telasLabel); telasWrap.appendChild(telasGroup); telasWrap.appendChild(telasWarning);
+        const telasWrap = createEl('div');
+        telasWrap.appendChild(telasLabel);
+        telasWrap.appendChild(telasGroup);
+        telasWrap.appendChild(telasWarning);
         wrap.appendChild(telasWrap);
 
-        const validadeWrap = document.createElement('div'); validadeWrap.appendChild(validadeLabel); validadeWrap.appendChild(validadeGroup);
+        const validadeWrap = createEl('div');
+        validadeWrap.appendChild(validadeLabel);
+        validadeWrap.appendChild(validadeGroup);
         wrap.appendChild(validadeWrap);
 
-        wrap.appendChild(precoLabel); wrap.appendChild(precoWrap);
+        wrap.appendChild(precoLabel);
+        wrap.appendChild(precoWrap);
+
         wrap.appendChild(obsWrap.wrap);
 
-        const precoNote = document.createElement('div'); precoNote.className = 'field-required-note';
-        precoNote.textContent = 'Clique no campo de preço e informe o valor antes de salvar.';
+        const precoNote = createEl('div', { className: 'field-required-note', text: 'Clique no campo de preço e informe o valor antes de salvar.' });
         wrap.appendChild(precoNote);
 
         container.appendChild(wrap);
 
-        // Handlers e constrains
+        // Interaction logic
         function updateTelasWarning() {
           const val = parseInt(telasInput.value, 10) || 0;
           if (val > 3) {
-            telasWarning.textContent = 'O limite padrão é 3 telas. Valores maiores são permitidos.';
+            telasWarning.textContent = 'Limite padrão: 3';
+            // keep short text to avoid layout shift on mobile
           } else {
             telasWarning.textContent = '';
           }
@@ -159,7 +248,10 @@
           else if (val > 12) validadeInput.value = 12;
         });
 
-        // Expor coleta de dados
+        // currency mask helpers
+        attachCurrencyMask(precoInput);
+
+        // expose collect
         container._collectData = () => {
           const precoRaw = precoInput.value || '';
           const precoFloat = precoInput.getNumericValue ? precoInput.getNumericValue() : parseCurrencyToFloat(precoRaw);
@@ -167,9 +259,9 @@
             nome: nome.input.value,
             telas: parseInt(telasInput.value, 10) || 1,
             validadeEmMeses: parseInt(validadeInput.value, 10) || 1,
-            preco: precoTouched && !isNaN(precoFloat) ? Number(precoFloat.toFixed(2)) : null,
-            _precoTouched: precoTouched,
-            observacoes: obsWrap.textarea.value?.trim() || ''
+            preco: (!isNaN(precoFloat) && precoFloat !== null) ? Number(precoFloat.toFixed(2)) : null,
+            _precoTouched: precoInput.value && precoInput.value.length > 0,
+            observacoes: obsWrap.textarea.value ? obsWrap.textarea.value.trim() : ''
           };
         };
 
@@ -183,19 +275,15 @@
 
         if (!d.nome || d.nome.trim().length === 0) throw new Error('Nome do plano é obrigatório');
 
-        if (!d._precoTouched) {
-          throw new Error('Você precisa clicar e informar o valor do campo Preço antes de salvar.');
-        }
-        if (d.preco === null || isNaN(d.preco)) {
-          throw new Error('Preço inválido. Informe um valor numérico (ex.: 39,90).');
-        }
+        if (!d._precoTouched) throw new Error('Você precisa clicar e informar o valor do campo Preço antes de salvar.');
+        if (d.preco === null || isNaN(d.preco)) throw new Error('Preço inválido. Informe um valor numérico (ex.: 39,90).');
 
         if (d.validadeEmMeses < 1) d.validadeEmMeses = 1;
         if (d.validadeEmMeses > 12) d.validadeEmMeses = 12;
         if (d.telas < 1) d.telas = 1;
 
         try {
-          if (typeof plan !== 'undefined' && plan && plan.id) {
+          if (plan && plan.id) {
             await MockAPI.createPlan({ id: plan.id, nome: d.nome, telas: d.telas, validadeEmMeses: d.validadeEmMeses, preco: d.preco, observacoes: d.observacoes });
           } else {
             await MockAPI.createPlan({ nome: d.nome, telas: d.telas, validadeEmMeses: d.validadeEmMeses, preco: d.preco, observacoes: d.observacoes });
@@ -214,7 +302,7 @@
   }
 
   /* ---------------------------
-     Utilitários (mesmos da versão anterior)
+     UTILITÁRIOS
      --------------------------- */
 
   function formatNumberToPtBR(n) {
@@ -226,15 +314,12 @@
     if (v === null || v === undefined) return NaN;
     const s = String(v).trim();
     if (s.length === 0) return NaN;
-    const cleaned = s.replace(/[^\d.,-]/g, '').replace(/\s+/g,'');
+    const cleaned = s.replace(/[^\d.,-]/g, '').replace(/\s+/g, '');
     const hasComma = cleaned.indexOf(',') !== -1;
     const hasDot = cleaned.indexOf('.') !== -1;
     let normalized = cleaned;
-    if (hasComma && hasDot) {
-      normalized = normalized.replace(/\./g,'').replace(',', '.');
-    } else if (hasComma && !hasDot) {
-      normalized = normalized.replace(',', '.');
-    }
+    if (hasComma && hasDot) normalized = normalized.replace(/\./g, '').replace(',', '.');
+    else if (hasComma && !hasDot) normalized = normalized.replace(',', '.');
     const num = parseFloat(normalized);
     return isNaN(num) ? NaN : num;
   }
@@ -243,7 +328,6 @@
     if (!inputEl) return;
 
     function parseRaw(raw) { return parseCurrencyToFloat(raw); }
-
     function formatForDisplay(num) {
       if (isNaN(num)) return '';
       return formatNumberToPtBR(num);
@@ -262,10 +346,7 @@
 
     inputEl.addEventListener('blur', (e) => {
       const n = parseRaw(e.target.value);
-      if (isNaN(n)) {
-        e.target.value = '';
-        return;
-      }
+      if (isNaN(n)) { e.target.value = ''; return; }
       e.target.value = formatForDisplay(n);
     });
 
@@ -275,7 +356,7 @@
     });
 
     inputEl.addEventListener('keydown', (ev) => {
-      const allowedNav = ['Backspace','Delete','Tab','Escape','Enter','ArrowLeft','ArrowRight','Home','End'];
+      const allowedNav = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
       if (allowedNav.includes(ev.key)) return;
       const allowedPattern = /[0-9.,]/;
       if (!allowedPattern.test(ev.key)) ev.preventDefault();
@@ -299,7 +380,7 @@
 
     const t = document.createElement('div');
     t.id = 'global-toast';
-    t.setAttribute('role','status');
+    t.setAttribute('role', 'status');
     t.style.position = 'fixed';
     t.style.right = '20px';
     t.style.bottom = '20px';
@@ -312,13 +393,9 @@
     t.style.maxWidth = '320px';
     t.style.backdropFilter = 'saturate(120%) blur(4px)';
 
-    if (type === 'success') {
-      t.style.background = 'linear-gradient(90deg,#10b981,#059669)';
-    } else if (type === 'error') {
-      t.style.background = 'linear-gradient(90deg,#ef4444,#dc2626)';
-    } else {
-      t.style.background = 'linear-gradient(90deg,#2563eb,#1e40af)';
-    }
+    if (type === 'success') t.style.background = 'linear-gradient(90deg,#10b981,#059669)';
+    else if (type === 'error') t.style.background = 'linear-gradient(90deg,#ef4444,#dc2626)';
+    else t.style.background = 'linear-gradient(90deg,#2563eb,#1e40af)';
 
     t.textContent = message;
     document.body.appendChild(t);
@@ -331,16 +408,9 @@
     }, timeout);
   }
 
-  function escapeHtml(s) {
-    if (!s) return '';
-    return String(s).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]; });
-  }
-
   window.PlansView = { render };
 
   document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('view-root')) {
-      setTimeout(() => { render(); }, 0);
-    }
+    if (document.getElementById('view-root')) setTimeout(render, 0);
   });
 })();
