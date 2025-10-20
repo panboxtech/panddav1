@@ -1,13 +1,3 @@
-/* views/clients.js
-   Lógica da view Clientes, arquivos separados e sem injeção HTML.
-   Observações importantes:
-    - Validações: soma de conexões dos pontos de acesso precisa igualar o número de telas do cliente.
-    - Validação de multiplosAcessos controla o max de conexões por ponto.
-    - Ao selecionar plano, preço e validade são preenchidos com feedback se o usuário alterar manualmente.
-    - Filtros por data de vencimento implementados conforme especificação.
-    - Uso de MockAPI para dados; substituir por chamadas Supabase conforme comentários.
-*/
-
 (function(){
   const root = document.getElementById('view-root');
 
@@ -16,14 +6,12 @@
     return d.toLocaleDateString();
   }
 
-  // Calcula diferença em dias entre hoje e a data de vencimento
   function daysFromNow(isoDate) {
     const now = new Date(); const d = new Date(isoDate);
     const diff = Math.floor((d - now) / (1000*60*60*24));
     return diff;
   }
 
-  // Render da view principal de clientes
   async function render() {
     root.innerHTML = '';
     const header = document.createElement('div'); header.className = 'clients-header';
@@ -35,7 +23,6 @@
     header.appendChild(actions);
     root.appendChild(header);
 
-    // Filtros
     const filters = document.createElement('div'); filters.className='filter-row card';
     const selVencendo = document.createElement('select');
     selVencendo.innerHTML = '<option value="all">Todos</option><option value="vencendo">Vencendo (<=3 dias)</option><option value="vencidos30">Vencidos <30 dias</option><option value="vencidosMais30">Vencidos >30 dias</option>';
@@ -47,7 +34,6 @@
     const listContainer = document.createElement('div'); listContainer.className='card';
     root.appendChild(listContainer);
 
-    // Carregar dados
     const [clients, plans] = await Promise.all([MockAPI.getClients(), MockAPI.getPlans()]);
     let current = clients;
 
@@ -68,15 +54,14 @@
         const tdNot = document.createElement('td'); tdNot.textContent = c.notificado ? 'Sim' : 'Não';
         const tdA = document.createElement('td');
 
-        const btnEdit = document.createElement('button'); btnEdit.className='flat-btn'; btnEdit.textContent='Editar';
+        const btnEdit = document.createElement('button'); btnEdit.className='action-btn'; btnEdit.textContent='Editar';
         btnEdit.addEventListener('click', ()=> openEditClient(c));
 
         tdA.appendChild(btnEdit);
 
         const user = Auth.getUser();
-        // Permissão de excluir apenas para master
         if (user && user.role === 'master') {
-          const btnDel = document.createElement('button'); btnDel.className='flat-btn'; btnDel.style.color='var(--danger)'; btnDel.textContent='Excluir';
+          const btnDel = document.createElement('button'); btnDel.className='action-btn danger'; btnDel.textContent='Excluir';
           btnDel.addEventListener('click', async () => {
             if (!confirm('Confirmar exclusão do cliente?')) return;
             await MockAPI.deleteClient(c.id);
@@ -117,17 +102,14 @@
     await showClients(current);
   }
 
-  // Abre modal para novo cliente (com accordion: Cliente | Pontos de Acesso)
   function openNewClient(plans) {
     Modal.open({
       title: 'Novo cliente',
       initialData: {},
       contentBuilder(container, data, h) {
-        // Usaremos um formulário dividido em seções (accordion-like)
         const form = document.createElement('form');
         form.className = 'stack';
 
-        // Section Cliente
         const secCliente = document.createElement('div'); secCliente.className='accordion';
         const clienteHeader = document.createElement('div'); clienteHeader.style.display='flex'; clienteHeader.style.justifyContent='space-between';
         const heading = document.createElement('strong'); heading.textContent='Cliente';
@@ -149,7 +131,6 @@
         [inpNome.wrap, inpTel.wrap, inpEmail.wrap, selPlan.wrap, inpTelas.wrap, inpPreco.wrap, inpValidade.wrap, chkNot].forEach(n=> clienteFields.appendChild(n));
         secCliente.appendChild(clienteFields);
 
-        // Accordion behavior
         let clienteCollapsed = false;
         toggle.addEventListener('click', () => {
           clienteCollapsed = !clienteCollapsed;
@@ -159,22 +140,18 @@
           else { resumo.textContent = '-'; }
         });
 
-        // Quando selecionar um plano, set price and validade
         selPlan.select.addEventListener('change', (e) => {
           const pid = e.target.value;
           const plan = plans.find(p=>p.id===pid);
           if (!plan) return;
-          // Set telas and preco and validade calculation
           inpTelas.input.value = plan.telas;
           inpPreco.input.value = plan.preco;
-          // validade: a data de vencimento deve usar o dia atual e somar validadeEmMeses
-          const serverNow = new Date(); // Em produção obter data do Supabase para evitar fuso horário
+          const serverNow = new Date();
           let day = serverNow.getDate();
           let month = serverNow.getMonth();
           let year = serverNow.getFullYear();
           month += plan.validadeEmMeses;
           const tentative = new Date(year, month, day);
-          // Se dia ajustado (ex.: 31 em mês menor), ajustar para dia 01 do próximo mês
           if (tentative.getDate() !== day) {
             const next = new Date(year, month+1, 1);
             inpValidade.input.value = next.toISOString().slice(0,10);
@@ -184,9 +161,7 @@
           }
         });
 
-        // Se usuário alterar preço manualmente, mostrar feedback
         inpPreco.input.addEventListener('input', () => {
-          // Obter plano selecionado
           const plan = plans.find(p=>p.id===selPlan.select.value);
           if (plan && Number(inpPreco.input.value) !== Number(plan.preco)) {
             inpPreco.wrap.querySelector('.feedback')?.remove();
@@ -197,7 +172,6 @@
           }
         });
 
-        // Section Pontos de Acesso (dinâmico)
         const secPontos = document.createElement('div'); secPontos.className='accordion';
         const pontosHeader = document.createElement('div'); pontosHeader.style.display='flex'; pontosHeader.style.justifyContent='space-between';
         const ph = document.createElement('strong'); ph.textContent = 'Pontos de Acesso';
@@ -208,7 +182,6 @@
         const pontosList = document.createElement('div'); pontosList.className='pontos-list';
         secPontos.appendChild(pontosList);
 
-        // Função para criar cartão resumo de ponto
         function createPontoCard(ponto) {
           const card = document.createElement('div'); card.className='ponto-card';
           const t = document.createElement('div'); t.textContent = `App: ${ponto.appNome || '-'}`;
@@ -216,17 +189,13 @@
           const u = document.createElement('div'); u.textContent = `Usuário: ${ponto.usuario || '-'}`;
           card.appendChild(t); card.appendChild(c); card.appendChild(u);
           card.addEventListener('click', ()=> {
-            // Ao clicar, preenche no formulário os campos para adicionar novo ponto
-            // Disparamos evento customizado para preencher inputs (ver abaixo)
             const ev = new CustomEvent('pontoSelected', { detail: ponto });
             form.dispatchEvent(ev);
           });
           return card;
         }
 
-        // Container para inputs temporários de ponto
         const pontoForm = document.createElement('div'); pontoForm.style.marginTop='8px';
-        // Campos: selecionar app (populado async), conexoes, usuario, senha
         const selApp = document.createElement('select'); selApp.name='appId';
         selApp.style.width='100%'; selApp.style.display='block';
         const inpConex = document.createElement('input'); inpConex.type='number'; inpConex.name='conexoesSimultaneas';
@@ -237,17 +206,14 @@
         pontoForm.appendChild(selApp); pontoForm.appendChild(inpConex); pontoForm.appendChild(inpUser); pontoForm.appendChild(inpPass); pontoForm.appendChild(savePontoBtn);
         secPontos.appendChild(pontoForm);
 
-        // Ao clicar em salvar ponto, valida e adiciona ao resumo
-        const pontosData = []; // array de objetos pontos
+        const pontosData = [];
         savePontoBtn.addEventListener('click', async () => {
-          // Buscar app selecionado
           const appId = selApp.value;
           if (!appId) { alert('Selecione um app'); return; }
           const apps = await MockAPI.getApps();
           const app = apps.find(a=>a.id===appId);
           if (!app) { alert('App inválido'); return; }
           const conex = Number(inpConex.value) || 0;
-          // Se app.multiplosAcessos == false, conex deve ser 1 e não editável
           if (!app.multiplosAcessos) {
             if (conex !== 1 && conex !== 0) { alert('Este app não permite múltiplos acessos. Será definido como 1.'); }
           }
@@ -261,11 +227,9 @@
           };
           pontosData.push(ponto);
           pontosList.appendChild(createPontoCard(ponto));
-          // Limpa campos
           inpConex.value=''; inpUser.value=''; inpPass.value='';
         });
 
-        // Quando um card de ponto é clicado, preenche os inputs do pontoForm
         form.addEventListener('pontoSelected', (e) => {
           const p = e.detail;
           selApp.value = p.appId;
@@ -274,14 +238,11 @@
           inpPass.value = p.senha;
         });
 
-        // Monta form final
         form.appendChild(secCliente);
         form.appendChild(secPontos);
 
-        // Adiciona o form ao container do modal
         container.appendChild(form);
 
-        // Popular select de apps
         MockAPI.getApps().then(apps=>{
           selApp.innerHTML = '<option value="">-- selecionar app --</option>';
           apps.forEach(a=> {
@@ -290,9 +251,7 @@
           });
         });
 
-        // Expor método para leitura de dados no onSave via atributos do DOM
         container._collectData = () => {
-          // Recolher campos do cliente
           const cliente = {
             nome: inpNome.input.value,
             telefone: inpTel.input.value,
@@ -302,26 +261,18 @@
             preco: Number(inpPreco.input.value),
             dataVencimento: inpValidade.input.value,
             notificado: ch.checked,
-            pontosAcesso: pontosData.slice() // clone
+            pontosAcesso: pontosData.slice()
           };
           return cliente;
         };
       },
 
-      // onSave envia para MockAPI.createClient; em produção substituir por chamada supabase
       onSave: async (collected) => {
-        // collected vem como objeto simples gerado por modal (ver container._collectData).
-        // Aqui, coletamos chamando a função exposta.
-        // Observação: Modal.onSave já junta inputs, mas como usamos estrutura custom, pegamos via DOM.
         const container = document.querySelector('#modals-root .modal-body');
         if (container && container._collectData) {
           const data = container._collectData();
-          // Validações complexas:
-          // 1) Soma de conexões de pontos deve ser igual ao número de telas
           const sumConex = data.pontosAcesso.reduce((s,p)=> s + Number(p.conexoesSimultaneas || 0), 0);
           if (sumConex !== data.telas) throw new Error('A soma de conexões dos pontos precisa ser igual ao número de telas.');
-          // 2) Cada ponto respeita a regra multiplosAcessos (já aplicado no momento da adição)
-          // Persistir via MockAPI
           const created = await MockAPI.createClient({
             nome: data.nome,
             telefone: data.telefone,
@@ -333,7 +284,6 @@
             preco: data.preco,
             pontosAcesso: data.pontosAcesso
           });
-          // Retorno para onDone handlers
           return created;
         } else {
           throw new Error('Erro ao coletar dados do formulário');
@@ -341,21 +291,17 @@
       },
 
       onDone: async () => {
-        // Após salvar, recarregar view
         await render();
       }
     });
   }
 
-  // Editar cliente: reusar modal e popular campos
   function openEditClient(client) {
-    // Carregar planos para selecionar
     MockAPI.getPlans().then(plans => {
       Modal.open({
         title: 'Editar cliente',
         initialData: client,
         contentBuilder(container, data, h) {
-          // Simples reuso: cria campos preenchidos
           const form = document.createElement('form'); form.className='stack';
           const nome = h.createInput({label:'Nome', name:'nome', value: data.nome, required:true});
           const tel = h.createInput({label:'Telefone', name:'telefone', value: data.telefone});
@@ -369,7 +315,6 @@
           [nome.wrap, tel.wrap, email.wrap, selPlan.wrap, telas.wrap, preco.wrap, dataV.wrap, not].forEach(n=> form.appendChild(n));
           container.appendChild(form);
 
-          // Expor _collectData para onSave
           container._collectData = () => ({
             nome: nome.input.value,
             telefone: tel.input.value,
@@ -384,7 +329,6 @@
         onSave: async () => {
           const container = document.querySelector('#modals-root .modal-body');
           const patch = container._collectData();
-          // Regras adicionais: comum só edita clientes (controlado na UI), aqui aplicamos a atualização
           await MockAPI.updateClient(client.id, {
             nome: patch.nome, telefone: patch.telefone, email: patch.email, planoId: patch.planoId,
             telas: patch.telas, preco: patch.preco, dataVencimento: patch.dataVencimento, notificado: patch.notificado
@@ -395,7 +339,6 @@
     });
   }
 
-  // Export da view
   window.ClientsView = { render };
 
   // Auto-register para main.js
