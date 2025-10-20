@@ -1,24 +1,9 @@
 /**
  * js/topbar.js
  *
- * Responsabilidades:
- * - Renderizar e manter a topbar sem destruir elementos estáticos existentes.
- * - Gerenciar menu de perfil (criado apenas uma vez).
- * - O botão de perfil exibe apenas o nome/usuário (sem mostrar o tipo/role).
- * - Sincronizar tema com localStorage (chave "pandda_theme").
- * - Controlar comportamento do botão #mobileMenuBtn:
- *     * Em mobile (<=900px) alterna sidebar.expanded (overlay).
- *     * Em desktop alterna sidebar.collapsed (colapsa para ícones).
- *
- * Observações para Supabase:
- * - Substituir Auth.getUser() / Auth.logout() por supabase.auth.getSession() / supabase.auth.signOut()
- *   quando o cliente Supabase estiver inicializado. Comentários no código indicam locais exatos.
- *
- * Uso:
- * - Chamar Topbar.render() ou Topbar.init() uma vez após DOMContentLoaded.
- * - Chamar Topbar.refreshProfile(user) quando o usuário mudar.
+ * Mantém a topbar sem perder atributos/classes do DOM original.
+ * Reusa elementos, evita innerHTML total e preserva .profile-btn.
  */
-
 (function () {
   const ROOT_SELECTOR = '.topbar';
   const THEME_KEY = 'pandda_theme';
@@ -28,7 +13,6 @@
   let themeBtn = null;
   let mobileBtn = null;
 
-  // --- helpers simples ---
   function createEl(tag, opts = {}) {
     const el = document.createElement(tag);
     if (opts.className) el.className = opts.className;
@@ -51,13 +35,11 @@
     return window.matchMedia('(max-width:900px)').matches;
   }
 
-  // --- menu de perfil: criação única ---
   function ensureProfileMenu() {
     if (menuEl && document.body.contains(menuEl)) return menuEl;
 
     menuEl = createEl('div', { className: 'profile-menu hidden', attrs: { role: 'menu' } });
 
-    // Menu: "Meu perfil" e "Sair". Logout chama Auth.logout() no protótipo.
     const profileItem = createEl('button', {
       className: 'menu-item',
       text: 'Meu perfil',
@@ -78,27 +60,16 @@
           const user = Auth.getUser() || {};
           const info = createEl('div');
           info.appendChild(createEl('div', { text: `Email: ${user.email || '-'}` }));
-          // Não exibimos role aqui por decisão do design atual
           container.appendChild(info);
         },
-        onSave: async () => {
-          // Para Supabase: supabase.from('users').update(...).eq('id', userId)
-          return Promise.resolve();
-        }
+        onSave: async () => Promise.resolve()
       });
       hideProfileMenu();
     });
 
     logoutItem.addEventListener('click', async (e) => {
       e.stopPropagation();
-      try {
-        // Substituir por supabase.auth.signOut() quando Supabase estiver integrado:
-        // if (typeof supabase !== 'undefined' && supabase.auth) { await supabase.auth.signOut(); }
-        // else { Auth.logout(); }
-        Auth.logout();
-      } catch (err) {
-        console.error('Erro ao deslogar:', err);
-      }
+      try { Auth.logout(); } catch (err) { console.error('Erro ao deslogar:', err); }
       hideProfileMenu();
     });
 
@@ -126,7 +97,6 @@
     if (profileBtn) profileBtn.setAttribute('aria-expanded', 'false');
   }
 
-  // --- tema ---
   function setTheme(next) {
     const rootDoc = document.documentElement;
     if (next === 'dark') rootDoc.setAttribute('data-theme', 'dark');
@@ -135,11 +105,9 @@
   }
   function toggleTheme() {
     const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-    const next = current === 'dark' ? 'light' : 'dark';
-    setTheme(next);
+    setTheme(current === 'dark' ? 'light' : 'dark');
   }
 
-  // --- atualiza botão de perfil: somente nome/usuário (sem role) ---
   function updateProfileButton(user) {
     if (!profileBtn) return;
     const display = (user && (user.name || user.email)) ? (user.name || user.email) : 'Usuário';
@@ -148,25 +116,20 @@
     profileBtn.appendChild(strong);
   }
 
-  // --- comportamento do botão #mobileMenuBtn (reusa o botão existente) ---
   function attachMobileMenuHandler() {
     mobileBtn = document.getElementById('mobileMenuBtn');
     const sidebar = document.getElementById('sidebar');
     if (!mobileBtn || !sidebar) return;
 
-    // Para evitar piscar, substituímos o nó apenas por clone do próprio botão
-    // e adicionamos o handler no clone (assim removemos listeners antigos).
+    // Substituir por clone apenas para remover listeners antigos sem afetar outros nós
     const newBtn = mobileBtn.cloneNode(true);
     mobileBtn.parentNode.replaceChild(newBtn, mobileBtn);
     mobileBtn = newBtn;
 
     const handleClick = (ev) => {
       ev.stopPropagation();
-      if (isMobileView()) {
-        sidebar.classList.toggle('expanded');
-      } else {
-        sidebar.classList.toggle('collapsed');
-      }
+      if (isMobileView()) sidebar.classList.toggle('expanded');
+      else sidebar.classList.toggle('collapsed');
       hideProfileMenu();
     };
 
@@ -180,15 +143,11 @@
     });
 
     window.addEventListener('resize', () => {
-      if (isMobileView()) {
-        sidebar.classList.remove('collapsed');
-      } else {
-        sidebar.classList.remove('expanded');
-      }
+      if (isMobileView()) sidebar.classList.remove('collapsed');
+      else sidebar.classList.remove('expanded');
     });
   }
 
-  // --- render sem destruir elementos estáticos ---
   function render() {
     root = document.querySelector(ROOT_SELECTOR);
     if (!root) {
@@ -196,7 +155,7 @@
       document.body.insertBefore(root, document.body.firstChild);
     }
 
-    // Reusar .brand se existir
+    // Reusar .brand
     let brandEl = root.querySelector('.brand');
     if (!brandEl) {
       brandEl = createEl('div', { className: 'brand', text: 'Pandda' });
@@ -205,7 +164,7 @@
       if (!brandEl.textContent || brandEl.textContent.trim().length === 0) brandEl.textContent = 'Pandda';
     }
 
-    // Reusar top-actions container
+    // Reusar top-actions
     let right = root.querySelector('.top-actions');
     if (!right) {
       right = createEl('div', { className: 'top-actions' });
@@ -215,23 +174,21 @@
       root.appendChild(right);
     }
 
-    // Theme button: preferir #themeToggle se presente no HTML
+    // Theme button
     themeBtn = document.getElementById('themeToggle') || right.querySelector('.icon-btn[data-role="theme"]');
     if (!themeBtn) {
-      themeBtn = createEl('button', { className: 'icon-btn', attrs: { 'aria-label': 'Alternar tema' } });
-      themeBtn.textContent = '🌓';
+      themeBtn = createEl('button', { className: 'icon-btn', text: '🌓', attrs: { 'aria-label': 'Alternar tema' } });
       themeBtn.setAttribute('data-role', 'theme');
       right.appendChild(themeBtn);
     } else {
       if (themeBtn.parentNode !== right) right.appendChild(themeBtn);
     }
-    // Remover listeners antigos via clone e adicionar o handler
     const themeClone = themeBtn.cloneNode(true);
     themeBtn.parentNode.replaceChild(themeClone, themeBtn);
     themeBtn = themeClone;
     themeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleTheme(); });
 
-    // Profile button: reusar .profile-btn ou criar novo
+    // Profile button: reusar ou criar; garantir classe profile-btn preservada
     profileBtn = root.querySelector('.profile-btn');
     if (!profileBtn) {
       profileBtn = createEl('button', { className: 'profile-btn', attrs: { 'aria-haspopup': 'true', 'aria-expanded': 'false' } });
@@ -239,9 +196,10 @@
       right.appendChild(profileBtn);
     } else {
       if (profileBtn.parentNode !== right) right.appendChild(profileBtn);
+      if (!profileBtn.classList.contains('profile-btn')) profileBtn.classList.add('profile-btn');
     }
 
-    // Remover listeners antigos no profileBtn substituindo por clone
+    // Remover listeners antigos via clone, mas preservando classes/atributos
     const newProfileBtn = profileBtn.cloneNode(true);
     profileBtn.parentNode.replaceChild(newProfileBtn, profileBtn);
     profileBtn = newProfileBtn;
@@ -252,17 +210,15 @@
       else hideProfileMenu();
     });
 
-    // Garantir menu criado e sincronizar tema salvo
     ensureProfileMenu();
+
     try {
       const saved = localStorage.getItem(THEME_KEY) || 'light';
       setTheme(saved === 'dark' ? 'dark' : 'light');
     } catch (e) { /* ignore */ }
 
-    // Preencher nome do usuário no botão de perfil
     updateProfileButton(Auth.getUser());
 
-    // Clique fora fecha menu (adiciona listener idempotente)
     if (!document._topbar_profile_outside_listener_attached) {
       document.addEventListener('click', (e) => {
         if (!menuEl) return;
@@ -273,14 +229,8 @@
       document._topbar_profile_outside_listener_attached = true;
     }
 
-    // Anexa handler do mobile/menu (reutiliza #mobileMenuBtn já presente)
     attachMobileMenuHandler();
   }
 
-  // API pública
-  window.Topbar = {
-    render,
-    init: render,
-    refreshProfile(user) { updateProfileButton(user || Auth.getUser()); }
-  };
+  window.Topbar = { render, init: render, refreshProfile(user) { updateProfileButton(user || Auth.getUser()); } };
 })();
