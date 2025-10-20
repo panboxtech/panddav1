@@ -13,7 +13,9 @@
 
   async function render() {
     root.innerHTML = '';
-    const header = createEl('div', { className: 'd-flex', text: '' });
+
+    // Header
+    const header = createEl('div');
     header.style.display = 'flex';
     header.style.justifyContent = 'space-between';
     header.style.alignItems = 'center';
@@ -25,6 +27,7 @@
     header.appendChild(add);
     root.appendChild(header);
 
+    // List container
     const listCard = createEl('div', { className: 'card' });
     root.appendChild(listCard);
 
@@ -32,8 +35,7 @@
     const list = createEl('div', { className: 'plan-list' });
 
     plans.forEach(p => {
-      const card = createPlanCard(p);
-      list.appendChild(card);
+      list.appendChild(createPlanCard(p));
     });
 
     listCard.appendChild(list);
@@ -44,24 +46,21 @@
   function createPlanCard(plan) {
     const card = createEl('div', { className: 'plan-card' });
 
-    // left column: title, meta, note
+    // Left column
     const left = createEl('div', { className: 'plan-left' });
-    left.style.flex = '1 1 auto';
-    left.style.minWidth = '0';
 
-    const title = createEl('div', { className: 'plan-title', text: truncateString(plan.nome || '', 45) });
+    const title = createEl('div', { className: 'plan-title', text: truncateString(plan.nome || '', 100) });
+
     const meta = createEl('div', { className: 'plan-meta' });
 
     const telasItem = createEl('div', { className: 'meta-item' });
-    const telasIcon = createEl('span', { className: 'label-icon', text: '' });
-    telasIcon.textContent = '📺';
+    const telasIcon = createEl('span', { className: 'label-icon', text: '📺' });
     const telasText = createEl('span', { text: `${plan.telas} telas` });
     telasItem.appendChild(telasIcon);
     telasItem.appendChild(telasText);
 
     const mesesItem = createEl('div', { className: 'meta-item' });
-    const mesesIcon = createEl('span', { className: 'label-icon', text: '' });
-    mesesIcon.textContent = '📅';
+    const mesesIcon = createEl('span', { className: 'label-icon', text: '📅' });
     const mesesText = createEl('span', { text: `${plan.validadeEmMeses} meses` });
     mesesItem.appendChild(mesesIcon);
     mesesItem.appendChild(mesesText);
@@ -74,18 +73,19 @@
     meta.appendChild(mesesItem);
     meta.appendChild(precoItem);
 
-    const note = createEl('div', { className: 'plan-note', text: truncateString(plan.observacoes || '', 45) });
-
     left.appendChild(title);
     left.appendChild(meta);
-    if (plan.observacoes && plan.observacoes.trim().length > 0) left.appendChild(note);
 
-    // right column: actions
+    if (plan.observacoes && plan.observacoes.trim().length > 0) {
+      const note = createEl('div', { className: 'plan-note', text: truncateString(plan.observacoes, 100) });
+      left.appendChild(note);
+    }
+
+    // Right column (actions)
     const right = createEl('div', { className: 'plan-actions' });
 
     const editBtn = createEl('button', { className: 'action-btn', text: 'Editar' });
     editBtn.addEventListener('click', () => openPlanModal('Editar plano', plan));
-
     right.appendChild(editBtn);
 
     const user = Auth.getUser();
@@ -117,18 +117,19 @@
       title,
       initialData: plan || {},
       contentBuilder(container, data, h) {
-        // Nome
+        // Nome (wider input to show more characters)
         const nome = h.createInput({ label: 'Nome', name: 'nome', value: data.nome || '', required: true });
+        nome.input.style.width = '100%';
+        nome.input.setAttribute('maxlength', '200');
 
-        // Telas
-        const telasLabel = createEl('label');
-        const telasLabelIcon = createEl('span', { className: 'label-icon' });
-        telasLabelIcon.textContent = '📺 Telas';
-        telasLabel.appendChild(telasLabelIcon);
+        // Telas (integer; visible 2 digits)
+        const telasLabel = createEl('label', { text: '' });
+        const telasIcon = createEl('span', { className: 'label-icon', text: '📺 Telas' });
+        telasLabel.appendChild(telasIcon);
 
         const telasGroup = createEl('div', { className: 'increment-group right-controls' });
-        const telasInput = createEl('input', { attrs: { type: 'number', name: 'telas' } });
-        telasInput.className = 'increment-input';
+        const telasInput = createEl('input', { attrs: { type: 'number', name: 'telas', min: '1' } });
+        telasInput.className = 'increment-input size-2digits';
         telasInput.value = (typeof data.telas !== 'undefined' && data.telas !== null) ? data.telas : 1;
 
         const telasControls = createEl('div', { className: 'increment-controls' });
@@ -140,29 +141,30 @@
         telasGroup.appendChild(telasInput);
         telasGroup.appendChild(telasControls);
 
-        const telasWarning = createEl('div', { className: 'limit-warning', text: '' });
+        const telasWarning = createEl('div', { className: 'limit-warning' });
         telasWarning.style.fontSize = '13px';
         telasWarning.style.color = 'var(--muted)';
 
-        // Validade
-        const validadeLabel = createEl('label');
-        const validadeLabelIcon = createEl('span', { className: 'label-icon' });
-        validadeLabelIcon.textContent = '📅 Validade em meses';
-        validadeLabel.appendChild(validadeLabelIcon);
+        // Validade em meses (integer; visible 2 digits; range 1-12)
+        const validadeLabel = createEl('label', { text: '' });
+        const validadeIcon = createEl('span', { className: 'label-icon', text: '📅 Validade em meses' });
+        validadeLabel.appendChild(validadeIcon);
 
         const validadeGroup = createEl('div', { className: 'increment-group right-controls' });
-        const validadeInput = createEl('input', { attrs: { type: 'number', name: 'validadeEmMeses' } });
-        validadeInput.className = 'increment-input';
+        const validadeInput = createEl('input', { attrs: { type: 'number', name: 'validadeEmMeses', min: '1', max: '12' } });
+        validadeInput.className = 'increment-input size-2digits';
         validadeInput.value = (typeof data.validadeEmMeses !== 'undefined' && data.validadeEmMeses !== null) ? data.validadeEmMeses : 1;
+
         const validadeControls = createEl('div', { className: 'increment-controls' });
         const validadeMinus = createEl('button', { className: 'increment-btn', text: '−' });
         const validadePlus = createEl('button', { className: 'increment-btn', text: '+' });
         validadeControls.appendChild(validadeMinus);
         validadeControls.appendChild(validadePlus);
+
         validadeGroup.appendChild(validadeInput);
         validadeGroup.appendChild(validadeControls);
 
-        // Preço
+        // Preço with R$ prefix
         const precoLabel = createEl('label', { text: 'Preço (R$)' });
         const precoWrap = createEl('div', { className: 'input-currency' });
         const prefix = createEl('div', { className: 'currency-prefix', text: 'R$' });
@@ -172,83 +174,78 @@
         precoWrap.appendChild(prefix);
         precoWrap.appendChild(precoInput);
 
-        // Observações (opcional)
+        // Observações (textarea) — ensure alignment and full width
         const obsWrap = h.createTextarea({ label: 'Observações (opcional)', name: 'observacoes', value: data.observacoes || '', attrs: { rows: 4, placeholder: 'Observações sobre o plano (opcional)' } });
+        // ensure wrapper has full width
+        obsWrap.wrap.classList.add('textarea-wrap');
 
-        // Build form
-        const wrap = createEl('div', { className: 'stack' });
-        wrap.appendChild(nome.wrap);
+        // assemble form
+        const formStack = createEl('div', { className: 'stack' });
+        formStack.appendChild(nome.wrap);
 
         const telasWrap = createEl('div');
         telasWrap.appendChild(telasLabel);
         telasWrap.appendChild(telasGroup);
         telasWrap.appendChild(telasWarning);
-        wrap.appendChild(telasWrap);
+        formStack.appendChild(telasWrap);
 
         const validadeWrap = createEl('div');
         validadeWrap.appendChild(validadeLabel);
         validadeWrap.appendChild(validadeGroup);
-        wrap.appendChild(validadeWrap);
+        formStack.appendChild(validadeWrap);
 
-        wrap.appendChild(precoLabel);
-        wrap.appendChild(precoWrap);
+        formStack.appendChild(precoLabel);
+        formStack.appendChild(precoWrap);
 
-        wrap.appendChild(obsWrap.wrap);
+        formStack.appendChild(obsWrap.wrap);
 
         const precoNote = createEl('div', { className: 'field-required-note', text: 'Clique no campo de preço e informe o valor antes de salvar.' });
-        wrap.appendChild(precoNote);
+        formStack.appendChild(precoNote);
 
-        container.appendChild(wrap);
+        container.appendChild(formStack);
 
-        // Interaction logic
+        // interactions and constraints
         function updateTelasWarning() {
           const val = parseInt(telasInput.value, 10) || 0;
-          if (val > 3) {
-            telasWarning.textContent = 'Limite padrão: 3';
-            // keep short text to avoid layout shift on mobile
-          } else {
-            telasWarning.textContent = '';
-          }
+          if (val > 3) telasWarning.textContent = 'Limite padrão: 3';
+          else telasWarning.textContent = '';
         }
 
-        validadeInput.setAttribute('min', '1');
-        validadeInput.setAttribute('max', '12');
-
+        // ensure numeric constraints
         telasMinus.addEventListener('click', () => {
-          let val = parseInt(telasInput.value, 10) || 1;
-          if (val > 1) val--;
-          telasInput.value = val;
+          let v = parseInt(telasInput.value, 10) || 1;
+          if (v > 1) v--;
+          telasInput.value = v;
           updateTelasWarning();
         });
         telasPlus.addEventListener('click', () => {
-          let val = parseInt(telasInput.value, 10) || 0;
-          val++;
-          telasInput.value = val;
+          let v = parseInt(telasInput.value, 10) || 0;
+          v++;
+          telasInput.value = v;
           updateTelasWarning();
         });
         telasInput.addEventListener('input', () => {
-          let val = parseInt(telasInput.value, 10);
-          if (isNaN(val) || val < 1) { telasInput.value = 1; val = 1; }
+          let v = parseInt(telasInput.value, 10);
+          if (isNaN(v) || v < 1) { telasInput.value = 1; v = 1; }
           updateTelasWarning();
         });
 
         validadeMinus.addEventListener('click', () => {
-          let val = parseInt(validadeInput.value, 10) || 1;
-          if (val > 1) val--;
-          validadeInput.value = val;
+          let v = parseInt(validadeInput.value, 10) || 1;
+          if (v > 1) v--;
+          validadeInput.value = v;
         });
         validadePlus.addEventListener('click', () => {
-          let val = parseInt(validadeInput.value, 10) || 1;
-          if (val < 12) val++;
-          validadeInput.value = val;
+          let v = parseInt(validadeInput.value, 10) || 1;
+          if (v < 12) v++;
+          validadeInput.value = v;
         });
         validadeInput.addEventListener('input', () => {
-          let val = parseInt(validadeInput.value, 10);
-          if (isNaN(val) || val < 1) validadeInput.value = 1;
-          else if (val > 12) validadeInput.value = 12;
+          let v = parseInt(validadeInput.value, 10);
+          if (isNaN(v) || v < 1) validadeInput.value = 1;
+          else if (v > 12) validadeInput.value = 12;
         });
 
-        // currency mask helpers
         attachCurrencyMask(precoInput);
 
         // expose collect
@@ -274,7 +271,6 @@
         const d = container._collectData();
 
         if (!d.nome || d.nome.trim().length === 0) throw new Error('Nome do plano é obrigatório');
-
         if (!d._precoTouched) throw new Error('Você precisa clicar e informar o valor do campo Preço antes de salvar.');
         if (d.preco === null || isNaN(d.preco)) throw new Error('Preço inválido. Informe um valor numérico (ex.: 39,90).');
 
@@ -301,9 +297,7 @@
     });
   }
 
-  /* ---------------------------
-     UTILITÁRIOS
-     --------------------------- */
+  /* utilities (currency mask and helpers are same as previous versions) */
 
   function formatNumberToPtBR(n) {
     if (n === null || n === undefined || isNaN(n)) return '';
@@ -356,7 +350,7 @@
     });
 
     inputEl.addEventListener('keydown', (ev) => {
-      const allowedNav = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+      const allowedNav = ['Backspace','Delete','Tab','Escape','Enter','ArrowLeft','ArrowRight','Home','End'];
       if (allowedNav.includes(ev.key)) return;
       const allowedPattern = /[0-9.,]/;
       if (!allowedPattern.test(ev.key)) ev.preventDefault();
@@ -378,9 +372,9 @@
     const existing = document.getElementById('global-toast');
     if (existing) existing.remove();
 
-    const t = document.createElement('div');
+    const t = createEl('div', { attrs: {} });
     t.id = 'global-toast';
-    t.setAttribute('role', 'status');
+    t.setAttribute('role','status');
     t.style.position = 'fixed';
     t.style.right = '20px';
     t.style.bottom = '20px';
