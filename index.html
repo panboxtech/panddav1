@@ -46,14 +46,24 @@
 
   <div id="modals-root" aria-live="polite"></div>
 
+  <!-- core infra (order matters) -->
   <script src="js/mockData.js"></script>
   <script src="js/auth.js"></script>
+
+  <!-- Modal must be available before views that call Modal.open -->
+  <script src="js/modal.js"></script>
+
+  <!-- UI infra -->
   <script src="js/topbar.js"></script>
   <script src="js/sidebar-toggle.js"></script>
+
+  <!-- Views (dependem de Modal, MockAPI, Auth) -->
   <script src="js/views/clients.js"></script>
   <script src="js/views/plans.js"></script>
   <script src="js/views/servers.js"></script>
   <script src="js/views/apps.js"></script>
+
+  <!-- App bootstrap -->
   <script src="js/main.js"></script>
 </body>
 </html>
