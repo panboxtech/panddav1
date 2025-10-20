@@ -1,8 +1,3 @@
-/* views/apps.js - listagem e criação de apps com seleção de servidor
-   Requisitos:
-    - Ao cadastrar, selecionar servidor via dropdown (somente nome obrigatório)
-    - multiplosAcessos obrigar seleção true/false
-*/
 (function(){
   const root = document.getElementById('view-root');
 
@@ -20,7 +15,7 @@
       const div = document.createElement('div'); div.className='client-card';
       const left = document.createElement('div'); left.innerHTML = `<strong>${a.nome}</strong><div class="small-badge">${a.codigoDeAcesso} • servidor: ${a.serverId}</div>`;
       const right = document.createElement('div');
-      const btnEdit = document.createElement('button'); btnEdit.className='flat-btn'; btnEdit.textContent='Editar';
+      const btnEdit = document.createElement('button'); btnEdit.className='action-btn'; btnEdit.textContent='Editar';
       btnEdit.addEventListener('click', ()=> {
         Modal.open({
           title:'Editar app',
@@ -39,7 +34,7 @@
           },
           onSave: async ()=> {
             const c = document.querySelector('#modals-root .modal-body'); const patch = c._collectData();
-            await MockAPI.createApp({ id:a.id, ...patch }); // mock
+            await MockAPI.createApp({ id:a.id, ...patch });
           },
           onDone: async ()=> render()
         });
@@ -47,7 +42,7 @@
       right.appendChild(btnEdit);
       const user = Auth.getUser();
       if (user && user.role === 'master') {
-        const btnDel = document.createElement('button'); btnDel.className='flat-btn'; btnDel.textContent='Excluir'; btnDel.style.color='var(--danger)';
+        const btnDel = document.createElement('button'); btnDel.className='action-btn danger'; btnDel.textContent='Excluir';
         btnDel.addEventListener('click', ()=> {
           if (!confirm('Excluir app?')) return;
           MockDB.apps = MockDB.apps.filter(x=>x.id!==a.id);
@@ -80,7 +75,6 @@
           },
           onSave: async ()=> {
             const c = document.querySelector('#modals-root .modal-body'); const data = c._collectData();
-            // validar multiplosAcessos selecionado (deve escolher true/false)
             if (typeof data.multiplosAcessos !== 'boolean') throw new Error('Selecione true ou false para multiplosAcessos.');
             await MockAPI.createApp(data);
           },
